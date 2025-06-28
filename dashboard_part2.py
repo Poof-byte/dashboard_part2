@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 from datetime import datetime, timedelta
+import numpy as np # Import numpy for linear regression
 
 # Set page configuration
 st.set_page_config(layout="wide", page_title="Environmental Data Analysis Dashboard")
@@ -298,23 +299,38 @@ def display_pollutant_levels_analysis(water_df_full, meteorological_df_full, vol
 # --- Function to display WQI Prediction Tool Section ---
 def display_wqi_prediction_tool(water_df_full):
     st.header("Water Quality Index (WQI) Prediction Tool")
-    st.markdown("Predict the Water Quality Index for a future date. This tool uses a simplified estimation based on historical data.")
+    st.markdown("Predict the Water Quality Index for a future date. This tool attempts to project a basic trend based on historical water quality data.")
 
     if water_df_full.empty:
         st.warning("No water quality data loaded. Cannot provide WQI predictions.")
         return
 
-    # Determine the latest date in the water quality data
-    latest_date = water_df_full['Date'].max()
+    # Calculate WQI for all historical data to get a baseline
+    wqi_data_all = water_df_full.copy()
+    wqi_data_all['WQI'] = wqi_data_all.apply(calculate_composite_wqi, axis=1)
+    wqi_data_all['WQI'] = pd.to_numeric(wqi_data_all['WQI'], errors='coerce')
     
-    # Set default date for prediction to one month after the latest date
-    default_prediction_date = latest_date + pd.DateOffset(months=1)
+    # Filter out rows where WQI is NaN (if calculate_composite_wqi returned "N/A" for example)
+    wqi_data_valid = wqi_data_all.dropna(subset=['WQI'])
+
+    if wqi_data_valid.empty:
+        st.error("No valid WQI data points found in historical data for prediction.")
+        return
+
+    # Sort data by date to ensure correct trend calculation
+    wqi_data_valid = wqi_data_valid.sort_values(by='Date')
+
+    # Get the latest date from the valid WQI data
+    latest_date_available = wqi_data_valid['Date'].max()
+
+    # Set default date for prediction to one month after the latest available data
+    default_prediction_date = latest_date_available + pd.DateOffset(months=1)
 
     # Date input for future prediction
     prediction_date = st.date_input(
         "Select a future date for WQI prediction:",
         value=default_prediction_date,
-        min_value=latest_date, # User cannot select dates before the latest historical data
+        min_value=latest_date_available, # User cannot select dates before the latest historical data
         key='wqi_prediction_date'
     )
 
@@ -322,36 +338,95 @@ def display_wqi_prediction_tool(water_df_full):
     prediction_datetime = pd.to_datetime(prediction_date)
 
     if st.button("Predict WQI"):
-        # --- Simplified Prediction Logic ---
-        # For a real application, a trained model (e.g., ARIMA, Prophet, or a regression model)
-        # would be used here to forecast WQI based on historical trends and potentially other features.
-        # This is a placeholder for illustration.
-
-        # Calculate WQI for all historical data to get a baseline
-        wqi_data = water_df_full.copy()
-        wqi_data['WQI'] = wqi_data.apply(calculate_composite_wqi, axis=1)
-        wqi_data['WQI'] = pd.to_numeric(wqi_data['WQI'], errors='coerce')
+        # --- Simplified Trend-Based Prediction Logic ---
         
-        # Get the average WQI from the available data as a simple prediction basis
-        average_wqi = wqi_data['WQI'].mean()
+        # Consider a window of the last X months for trend analysis
+        # Using a fixed window (e.g., 12 months) for a more stable trend
+        trend_window_months = 12 
+        
+        start_trend_date = latest_date_available - pd.DateOffset(months=trend_window_months - 1)
+        
+        trend_data = wqi_data_valid[wqi_data_valid['Date'] >= start_trend_date].copy()
 
-        if pd.isna(average_wqi):
-            st.error("Could not calculate an average WQI from historical data. Please check data validity.")
-            return
+        if len(trend_data) >= 2: # Need at least 2 points to calculate a linear trend
+            # Convert dates to numerical values (e.g., months since a fixed epoch or just a simple ordinal)
+            # Using ordinal day for simplicity
+            trend_data['Date_Ordinal'] = trend_data['Date'].apply(lambda x: x.toordinal())
+            
+            # Group by location and calculate a trend for each, then average the trend or predict WQI for each location
+            # For simplicity, let's average the WQI within the trend window and add a simple overall trend
+            
+            # If a single, global prediction is desired regardless of location for simplicity:
+            # Use overall trend from the available data in the window
+            X = trend_data['Date_Ordinal'].values.reshape(-1, 1)
+            y = trend_data['WQI'].values
 
-        # Display Prediction
-        st.subheader("Predicted WQI")
-        st.write(f"For **{prediction_date.strftime('%Y-%m-%d')}**: ")
-        st.info(f"**Predicted WQI: {average_wqi:.2f}**")
-        st.markdown(f"""
-        <small><i>
-        Note: This WQI prediction is a simplified estimation based on the historical average WQI ({average_wqi:.2f}).
-        For accurate forecasting, a dedicated time-series forecasting model (e.g., ARIMA, Prophet) trained on sufficient historical data
-        and potentially considering meteorological/volcanic factors would be required.
-        </i></small>
-        """, unsafe_allow_html=True)
+            try:
+                # Fit a simple linear regression model (polynomial of degree 1)
+                poly_coeffs = np.polyfit(X.flatten(), y, 1)
+                # The prediction function is y = m*x + c, where m = poly_coeffs[0], c = poly_coeffs[1]
+                m, c = poly_coeffs[0], poly_coeffs[1]
+                
+                future_date_ordinal = prediction_datetime.toordinal()
+                predicted_wqi = m * future_date_ordinal + c
+
+                # Clamp the WQI to be within a reasonable range (e.g., 0-100)
+                predicted_wqi = max(0, min(100, predicted_wqi))
+
+                st.subheader("Predicted WQI (Trend-Based)")
+                st.write(f"For **{prediction_date.strftime('%Y-%m-%d')}**: ")
+                st.info(f"**Predicted WQI: {predicted_wqi:.2f}**")
+                st.markdown(f"""
+                <small><i>
+                Note: This WQI prediction is a simplified estimation based on a linear trend calculated from the last {trend_window_months} months of historical WQI data.
+                For accurate and robust forecasting, a dedicated time-series forecasting model (e.g., ARIMA, Prophet) trained on sufficient historical data
+                and potentially considering meteorological/volcanic factors, as well as seasonality, would be required.
+                </i></small>
+                """, unsafe_allow_html=True)
+
+            except np.linalg.LinAlgError:
+                st.warning("Not enough data points or data is constant in the trend window to calculate a meaningful trend. Reverting to average WQI.")
+                average_wqi_overall = wqi_data_valid['WQI'].mean()
+                st.subheader("Predicted WQI (Historical Average)")
+                st.write(f"For **{prediction_date.strftime('%Y-%m-%d')}**: ")
+                st.info(f"**Predicted WQI: {average_wqi_overall:.2f}**")
+                st.markdown(f"""
+                <small><i>
+                Note: This WQI prediction is a simplified estimation based on the overall historical average WQI ({average_wqi_overall:.2f}).
+                For accurate forecasting, a dedicated time-series forecasting model (e.g., ARIMA, Prophet) trained on sufficient historical data
+                and potentially considering meteorological/volcanic factors would be required.
+                </i></small>
+                """, unsafe_allow_html=True)
+            except Exception as e:
+                st.error(f"An error occurred during trend calculation: {e}. Reverting to average WQI.")
+                average_wqi_overall = wqi_data_valid['WQI'].mean()
+                st.subheader("Predicted WQI (Historical Average)")
+                st.write(f"For **{prediction_date.strftime('%Y-%m-%d')}**: ")
+                st.info(f"**Predicted WQI: {average_wqi_overall:.2f}**")
+                st.markdown(f"""
+                <small><i>
+                Note: This WQI prediction is a simplified estimation based on the overall historical average WQI ({average_wqi_overall:.2f}).
+                For accurate forecasting, a dedicated time-series forecasting model (e.g., ARIMA, Prophet) trained on sufficient historical data
+                and potentially considering meteorological/volcanic factors would be required.
+                </i></small>
+                """, unsafe_allow_html=True)
+
+        else:
+            # Fallback to overall average if not enough data for trend
+            average_wqi_overall = wqi_data_valid['WQI'].mean()
+            st.subheader("Predicted WQI (Historical Average)")
+            st.write(f"For **{prediction_date.strftime('%Y-%m-%d')}**: ")
+            st.info(f"**Predicted WQI: {average_wqi_overall:.2f}**")
+            st.markdown(f"""
+            <small><i>
+            Note: This WQI prediction is a simplified estimation based on the overall historical average WQI ({average_wqi_overall:.2f})
+            due to insufficient data for trend analysis.
+            For accurate forecasting, a dedicated time-series forecasting model (e.g., ARIMA, Prophet) trained on sufficient historical data
+            and potentially considering meteorological/volcanic factors would be required.
+            </i></small>
+            """, unsafe_allow_html=True)
     else:
-        st.info("Select a future date and click 'Predict WQI' to see an estimated WQI value.")
+        st.info("Select a future date and click 'Predict WQI' to see an estimated WQI value. This prediction is based on historical trends found in the water quality data.")
 
 
 # --- Function to display Meteorological Analysis Section ---

@@ -76,83 +76,102 @@ def display_introduction():
     Explore vital environmental data including water quality, meteorological conditions, and volcanic activity. This dashboard provides interactive visualizations and insights to help understand trends and patterns in environmental monitoring.
     """)
 
-# --- Function to calculate a simplified Water Quality Index (WQI) ---
-def calculate_wqi(df, parameter):
+# --- Function to calculate a simplified Composite Water Quality Index (WQI) for a row ---
+def calculate_composite_wqi(row):
     """
-    Calculates a simplified Water Quality Index (WQI) for a given parameter.
-    This is a illustrative, simplified calculation and not based on official WQI standards.
-    A comprehensive WQI requires more detailed criteria and weighting.
+    Calculates a simplified composite Water Quality Index (WQI) for a single row of water quality data.
+    This is an illustrative calculation and not based on official, complex WQI standards.
+    It assigns a score (0-100) to each relevant parameter and then calculates a weighted average.
     """
-    if df.empty or parameter not in df.columns:
-        return "N/A"
+    scores = {}
+    
+    # Define quality rating for each parameter (simplified examples)
+    # These should be based on regulatory standards for actual WQI
+    # Each parameter score is based on its value relative to ideal/acceptable ranges.
 
-    # Define quality ranges and corresponding WQI scores (illustrative)
-    # These thresholds are simplified for demonstration purposes.
-    wqi_scores = []
-    for value in df[parameter]:
-        score = 0
-        if parameter == 'PH_LEVEL':
-            if 6.5 <= value <= 8.5:
-                score = 100 # Excellent
-            elif 6.0 <= value < 6.5 or 8.5 < value <= 9.0:
-                score = 75  # Good
-            elif 5.5 <= value < 6.0 or 9.0 < value <= 9.5:
-                score = 50  # Fair
-            else:
-                score = 25  # Poor
-        elif parameter == 'DISSOLVED_OXYGEN':
-            if value >= 7.0:
-                score = 100
-            elif 5.0 <= value < 7.0:
-                score = 75
-            elif 3.0 <= value < 5.0:
-                score = 50
-            else:
-                score = 25
-        elif parameter == 'AMMONIA':
-            if value <= 0.05:
-                score = 100
-            elif 0.05 < value <= 0.5:
-                score = 75
-            elif 0.5 < value <= 2.0:
-                score = 50
-            else:
-                score = 25
-        elif parameter == 'NITRATE_NITRITE':
-            if value <= 1.0:
-                score = 100
-            elif 1.0 < value <= 10.0:
-                score = 75
-            elif 10.0 < value <= 50.0:
-                score = 50
-            else:
-                score = 25
-        elif parameter == 'PHOSPHATE':
-            if value <= 0.1:
-                score = 100
-            elif 0.1 < value <= 0.5:
-                score = 75
-            elif 0.5 < value <= 1.0:
-                score = 50
-            else:
-                score = 25
-        # Add more parameters and their WQI logic as needed
-        else:
-            # For other numeric columns, provide a default average or simple scale
-            # This is highly simplified and should be replaced with actual WQI logic
-            max_val = df[parameter].max()
-            min_val = df[parameter].min()
-            if max_val == min_val: # Avoid division by zero if all values are same
-                score = 100
-            else:
-                normalized_value = (value - min_val) / (max_val - min_val)
-                score = int(100 * (1 - normalized_value)) # Higher values might mean lower quality, adapt as needed
+    # pH Score: Ideal 6.5-8.5
+    if 'PH_LEVEL' in row and pd.notna(row['PH_LEVEL']):
+        ph = row['PH_LEVEL']
+        if 6.5 <= ph <= 8.5: scores['PH_LEVEL'] = 100
+        elif (6.0 <= ph < 6.5) or (8.5 < ph <= 9.0): scores['PH_LEVEL'] = 75
+        elif (5.5 <= ph < 6.0) or (9.0 < ph <= 9.5): scores['PH_LEVEL'] = 50
+        else: scores['PH_LEVEL'] = 25
+    else: scores['PH_LEVEL'] = 0 # Assume 0 score if data is missing
 
-        wqi_scores.append(score)
+    # Dissolved Oxygen Score: Higher is generally better for aquatic life, typically > 5 mg/L good
+    if 'DISSOLVED_OXYGEN' in row and pd.notna(row['DISSOLVED_OXYGEN']):
+        do = row['DISSOLVED_OXYGEN']
+        if do >= 7.0: scores['DISSOLVED_OXYGEN'] = 100
+        elif 5.0 <= do < 7.0: scores['DISSOLVED_OXYGEN'] = 75
+        elif 3.0 <= do < 5.0: scores['DISSOLVED_OXYGEN'] = 50
+        else: scores['DISSOLVED_OXYGEN'] = 25
+    else: scores['DISSOLVED_OXYGEN'] = 0
 
-    if not wqi_scores:
-        return "N/A"
-    return f"{sum(wqi_scores) / len(wqi_scores):.2f}" # Return average WQI for the filtered data
+    # Ammonia Score: Lower is better (toxicity)
+    if 'AMMONIA' in row and pd.notna(row['AMMONIA']):
+        ammonia = row['AMMONIA']
+        if ammonia <= 0.05: scores['AMMONIA'] = 100
+        elif 0.05 < ammonia <= 0.5: scores['AMMONIA'] = 75
+        elif 0.5 < ammonia <= 2.0: scores['AMMONIA'] = 50
+        else: scores['AMMONIA'] = 25
+    else: scores['AMMONIA'] = 0
+
+    # Nitrate-Nitrite Score: Lower is better (eutrophication, toxicity)
+    if 'NITRATE_NITRITE' in row and pd.notna(row['NITRATE_NITRITE']):
+        nitrate = row['NITRATE_NITRITE']
+        if nitrate <= 1.0: scores['NITRATE_NITRITE'] = 100
+        elif 1.0 < nitrate <= 10.0: scores['NITRATE_NITRITE'] = 75
+        elif 10.0 < nitrate <= 50.0: scores['NITRATE_NITRITE'] = 50
+        else: scores['NITRATE_NITRITE'] = 25
+    else: scores['NITRATE_NITRITE'] = 0
+
+    # Phosphate Score: Lower is better (eutrophication)
+    if 'PHOSPHATE' in row and pd.notna(row['PHOSPHATE']):
+        phosphate = row['PHOSPHATE']
+        if phosphate <= 0.1: scores['PHOSPHATE'] = 100
+        elif 0.1 < phosphate <= 0.5: scores['PHOSPHATE'] = 75
+        elif 0.5 < phosphate <= 1.0: scores['PHOSPHATE'] = 50
+        else: scores['PHOSPHATE'] = 25
+    else: scores['PHOSPHATE'] = 0
+
+    # Temperature Score (for Surface, Middle, Bottom Water Temp): Closer to optimal is better
+    # Assuming optimal range 20-25 C, adjust as per specific aquatic ecosystem needs
+    temp_params = ['SURFACE_WATER_TEMP', 'MIDDLE_WATER_TEMP', 'BOTTOM_WATER_TEMP']
+    for temp_param in temp_params:
+        if temp_param in row and pd.notna(row[temp_param]):
+            temp = row[temp_param]
+            if 20 <= temp <= 25: scores[temp_param] = 100
+            elif (15 <= temp < 20) or (25 < temp <= 30): scores[temp_param] = 75
+            elif (10 <= temp < 15) or (30 < temp <= 35): scores[temp_param] = 50
+            else: scores[temp_param] = 25
+        else: scores[temp_param] = 0
+
+    # Define weights for each parameter. Sum of weights should ideally be 1.0 or normalized.
+    # These are illustrative weights. Proper weights need expert input.
+    weights = {
+        'PH_LEVEL': 0.15,
+        'DISSOLVED_OXYGEN': 0.25,
+        'AMMONIA': 0.20,
+        'NITRATE_NITRITE': 0.15,
+        'PHOSPHATE': 0.10,
+        'SURFACE_WATER_TEMP': 0.05,
+        'MIDDLE_WATER_TEMP': 0.05,
+        'BOTTOM_WATER_TEMP': 0.05,
+    }
+
+    composite_wqi = 0
+    total_effective_weight = 0
+
+    for param, weight in weights.items():
+        if param in scores and scores[param] is not None: # Ensure score exists
+            composite_wqi += scores[param] * weight
+            total_effective_weight += weight
+
+    if total_effective_weight == 0:
+        return "N/A" # No valid parameters to calculate WQI
+
+    return f"{composite_wqi / total_effective_weight:.2f}"
+
 
 # --- Function to display Water Quality Analysis Section ---
 def display_water_quality_analysis(df):
@@ -204,10 +223,6 @@ def display_water_quality_analysis(df):
             line_chart_data = water_filtered_df.pivot_table(index='Date', columns='Location', values=selected_water_parameter, aggfunc='mean').fillna(0)
             st.line_chart(line_chart_data)
 
-            # Display WQI for the selected parameter
-            avg_wqi = calculate_wqi(water_filtered_df, selected_water_parameter)
-            st.info(f"**Average Water Quality Index (WQI) for {selected_water_parameter}:** {avg_wqi} (Simplified Calculation)")
-
         except Exception as e:
             st.warning(f"Could not render water quality line chart. Please adjust filters or check data. Error: {e}")
             st.dataframe(water_filtered_df[['Date', 'Location', selected_water_parameter]])
@@ -245,7 +260,10 @@ def display_water_quality_analysis(df):
     # --- Water Quality Historical Data Section ---
     st.subheader("Historical Data")
     if not water_filtered_df.empty:
-        st.write("Below is a table displaying the historical water quality data based on your selected filters.")
+        # Calculate and add WQI to the historical data DataFrame
+        # Ensure 'WQI (Composite)' is a string type to handle "N/A"
+        water_filtered_df['WQI (Composite)'] = water_filtered_df.apply(calculate_composite_wqi, axis=1)
+        st.write("Below is a table displaying the historical water quality data and Composite WQI based on your selected filters.")
         st.dataframe(water_filtered_df, use_container_width=True)
     else:
         st.info("No historical water quality data available for the current filters. Please adjust your selections in the sidebar.")

@@ -62,8 +62,8 @@ def load_volcanic_data():
         df = pd.read_csv('completed_volcanic_flux_filled.csv')
         df['Date'] = pd.to_datetime(df['YEAR'].astype(str) + '-' + df['MONTH'].astype(str) + '-01')
         df.rename(columns={'LOCATION': 'Location'}, inplace=True)
-        # Assuming relevant numeric columns for volcanic flux are:
-        volcanic_numeric_cols = ['CO2_FLUX', 'SO2_FLUX', 'H2S_FLUX', 'CH4_FLUX', 'TOTAL_FLUX'] # Add/adjust as per actual CSV columns
+        # Updated: Only use 'CO2_FLUX' and 'SO2_FLUX' as per user's request
+        volcanic_numeric_cols = ['CO2_FLUX', 'SO2_FLUX'] 
         df = df[['Date', 'Location'] + [col for col in volcanic_numeric_cols if col in df.columns]]
         return df
     except FileNotFoundError:

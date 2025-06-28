@@ -76,6 +76,84 @@ def display_introduction():
     Explore vital environmental data including water quality, meteorological conditions, and volcanic activity. This dashboard provides interactive visualizations and insights to help understand trends and patterns in environmental monitoring.
     """)
 
+# --- Function to calculate a simplified Water Quality Index (WQI) ---
+def calculate_wqi(df, parameter):
+    """
+    Calculates a simplified Water Quality Index (WQI) for a given parameter.
+    This is a illustrative, simplified calculation and not based on official WQI standards.
+    A comprehensive WQI requires more detailed criteria and weighting.
+    """
+    if df.empty or parameter not in df.columns:
+        return "N/A"
+
+    # Define quality ranges and corresponding WQI scores (illustrative)
+    # These thresholds are simplified for demonstration purposes.
+    wqi_scores = []
+    for value in df[parameter]:
+        score = 0
+        if parameter == 'PH_LEVEL':
+            if 6.5 <= value <= 8.5:
+                score = 100 # Excellent
+            elif 6.0 <= value < 6.5 or 8.5 < value <= 9.0:
+                score = 75  # Good
+            elif 5.5 <= value < 6.0 or 9.0 < value <= 9.5:
+                score = 50  # Fair
+            else:
+                score = 25  # Poor
+        elif parameter == 'DISSOLVED_OXYGEN':
+            if value >= 7.0:
+                score = 100
+            elif 5.0 <= value < 7.0:
+                score = 75
+            elif 3.0 <= value < 5.0:
+                score = 50
+            else:
+                score = 25
+        elif parameter == 'AMMONIA':
+            if value <= 0.05:
+                score = 100
+            elif 0.05 < value <= 0.5:
+                score = 75
+            elif 0.5 < value <= 2.0:
+                score = 50
+            else:
+                score = 25
+        elif parameter == 'NITRATE_NITRITE':
+            if value <= 1.0:
+                score = 100
+            elif 1.0 < value <= 10.0:
+                score = 75
+            elif 10.0 < value <= 50.0:
+                score = 50
+            else:
+                score = 25
+        elif parameter == 'PHOSPHATE':
+            if value <= 0.1:
+                score = 100
+            elif 0.1 < value <= 0.5:
+                score = 75
+            elif 0.5 < value <= 1.0:
+                score = 50
+            else:
+                score = 25
+        # Add more parameters and their WQI logic as needed
+        else:
+            # For other numeric columns, provide a default average or simple scale
+            # This is highly simplified and should be replaced with actual WQI logic
+            max_val = df[parameter].max()
+            min_val = df[parameter].min()
+            if max_val == min_val: # Avoid division by zero if all values are same
+                score = 100
+            else:
+                normalized_value = (value - min_val) / (max_val - min_val)
+                score = int(100 * (1 - normalized_value)) # Higher values might mean lower quality, adapt as needed
+
+        wqi_scores.append(score)
+
+    if not wqi_scores:
+        return "N/A"
+    return f"{sum(wqi_scores) / len(wqi_scores):.2f}" # Return average WQI for the filtered data
+
 # --- Function to display Water Quality Analysis Section ---
 def display_water_quality_analysis(df):
     st.header("Water Quality Analysis")
@@ -125,6 +203,11 @@ def display_water_quality_analysis(df):
         try:
             line_chart_data = water_filtered_df.pivot_table(index='Date', columns='Location', values=selected_water_parameter, aggfunc='mean').fillna(0)
             st.line_chart(line_chart_data)
+
+            # Display WQI for the selected parameter
+            avg_wqi = calculate_wqi(water_filtered_df, selected_water_parameter)
+            st.info(f"**Average Water Quality Index (WQI) for {selected_water_parameter}:** {avg_wqi} (Simplified Calculation)")
+
         except Exception as e:
             st.warning(f"Could not render water quality line chart. Please adjust filters or check data. Error: {e}")
             st.dataframe(water_filtered_df[['Date', 'Location', selected_water_parameter]])
@@ -366,17 +449,17 @@ if st.sidebar.button("Introduction"):
     st.session_state['current_page'] = 'Introduction'
     st.session_state['selected_data_type'] = None # Reset data type when intro is selected
 
-# Button for Data Analysis (which will reveal sub-options)
-if st.sidebar.button("Data Analysis"):
-    st.session_state['current_page'] = 'Data Analysis'
-    # Default to Water Quality if Data Analysis is newly selected and no sub-type yet
+# Renamed button for Historical Data Analysis
+if st.sidebar.button("Historical Data Analysis"):
+    st.session_state['current_page'] = 'Historical Data Analysis'
+    # Default to Water Quality if Historical Data Analysis is newly selected and no sub-type yet
     if st.session_state['selected_data_type'] is None:
         st.session_state['selected_data_type'] = 'Water Quality'
 
 # Display content based on selected page
 if st.session_state['current_page'] == 'Introduction':
     display_introduction()
-else: # 'Data Analysis' page is selected
+else: # 'Historical Data Analysis' page is selected
     st.sidebar.markdown("---")
     st.sidebar.subheader("Select Data Type")
     

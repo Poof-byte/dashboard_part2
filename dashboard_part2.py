@@ -268,6 +268,26 @@ def display_water_quality_analysis(df):
     else:
         st.info("No historical water quality data available for the current filters. Please adjust your selections in the sidebar.")
 
+    st.markdown("---")
+
+    # --- Water Quality Index (WQI) Trend ---
+    st.subheader("Water Quality Index (WQI) Trend")
+    if not water_filtered_df.empty:
+        # Convert WQI to numeric for plotting, coercing 'N/A' to NaN
+        wqi_plot_data = water_filtered_df.copy()
+        wqi_plot_data['WQI (Composite)'] = pd.to_numeric(wqi_plot_data['WQI (Composite)'], errors='coerce')
+
+        if not wqi_plot_data['WQI (Composite)'].dropna().empty:
+            # Pivot table for WQI trend by location
+            wqi_line_chart_data = wqi_plot_data.pivot_table(index='Date', columns='Location', values='WQI (Composite)', aggfunc='mean').fillna(0)
+            st.line_chart(wqi_line_chart_data)
+            st.info("This chart displays the Composite Water Quality Index (WQI) trend over time for selected locations. Higher values indicate better water quality.")
+        else:
+            st.warning("Not enough valid WQI data points to display a trend. Ensure relevant parameters are present and not all are 'N/A'.")
+    else:
+        st.info("No water quality data available to compute WQI trend. Please adjust your selections.")
+
+
 # --- Function to display Meteorological Analysis Section ---
 def display_meteorological_analysis(df):
     st.header("Meteorological Analysis")

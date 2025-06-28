@@ -74,7 +74,7 @@ def display_introduction():
     st.markdown("""
     ## Welcome to the Environmental Data Analysis Dashboard!
 
-    Explore vital environmental data including water quality, meteorological conditions, and volcanic activity. This dashboard provides interactive visualizations and insights to help understand trends and patterns in environmental monitoring.
+    Explore vital environmental data including water quality, meteorological conditions, and volcanic activity. This dashboard provides interactive visualizations and insights to help understand trends and patterns in environmental monitoring. For predictions, this dashboard utilizes concepts from advanced time-series forecasting, including those inspired by **Hybrid CNN-LSTM** architectures for potential future implementations.
     """)
 
 # --- Function to calculate a simplified Composite Water Quality Index (WQI) for a row ---

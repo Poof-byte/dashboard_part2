@@ -299,11 +299,11 @@ def display_pollutant_levels_analysis(water_df_full, meteorological_df_full, vol
     # Use combined unique locations from all available dataframes for consistent filtering
     all_locations = pd.Series(dtype='object')
     if not water_df_full.empty:
-        all_locations = pd.concat([all_locations, water_df_full['Location'].unique()])
+        all_locations = pd.concat([all_locations, pd.Series(water_df_full['Location'].unique())])
     if not meteorological_df_full.empty:
-        all_locations = pd.concat([all_locations, meteorological_df_full['Location'].unique()])
+        all_locations = pd.concat([all_locations, pd.Series(meteorological_df_full['Location'].unique())])
     if not volcanic_df_full.empty:
-        all_locations = pd.concat([all_locations, volcanic_df_full['Location'].unique()])
+        all_locations = pd.concat([all_locations, pd.Series(volcanic_df_full['Location'].unique())])
     
     all_locations = all_locations.unique().tolist()
 

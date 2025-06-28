@@ -1,3 +1,4 @@
+```python
 import streamlit as st
 import pandas as pd
 # Removed: import plotly.express as px
@@ -323,12 +324,11 @@ def display_pollutant_levels_analysis(water_df_full, meteorological_df_full, vol
     
     if current_water_df.empty:
         st.warning("No water quality data available for the selected locations.")
+        # We need to return here or ensure subsequent operations handle empty dataframes correctly
         return
 
-    # Determine pollutant_min_date and pollutant_max_date from filtered water data
     pollutant_min_date = current_water_df['Date'].min().to_pydatetime()
     pollutant_max_date = current_water_df['Date'].max().to_pydatetime()
-    
     pollutant_date_range = st.sidebar.slider(
         "Select Pollutant Date Range:",
         value=(pollutant_min_date, pollutant_max_date),
@@ -357,7 +357,7 @@ def display_pollutant_levels_analysis(water_df_full, meteorological_df_full, vol
         st.warning("No relevant pollutant data (Ammonia, pH, Nitrate, Phosphate) found in the filtered water quality data.")
         return
 
-    st.subheader("Individual Pollutant Level Trends (Water Quality)")
+    st.subheader("Individual Pollutant Level Trends")
     for pollutant in available_pollutants:
         st.write(f'Trend of {pollutant} Over Time by Location:')
         try:
@@ -368,12 +368,12 @@ def display_pollutant_levels_analysis(water_df_full, meteorological_df_full, vol
         except Exception as e:
             st.warning(f"Could not render chart for {pollutant}. Error: {e}")
             st.dataframe(pollutant_filtered_df_water[['Date', 'Location', pollutant]])
-    st.info("These charts display the trend of individual pollutant levels from water quality data over time, categorized by location, based on your filters.")
+    st.info("These charts display the trend of individual pollutant levels over time, categorized by location, based on your filters.")
     
     st.markdown("---")
 
     # Display additional data based on display_option
-    if display_option == 'Water Quality + Meteorological' or display_option == 'Water Quality + Meteorological + Volcanic Activity':
+    if display_option == 'Water Quality + Meteorological':
         st.subheader("Related Meteorological Data")
         if not meteorological_df_full.empty:
             met_filtered_df = meteorological_df_full[
@@ -382,16 +382,13 @@ def display_pollutant_levels_analysis(water_df_full, meteorological_df_full, vol
                 (meteorological_df_full['Date'] <= pd.to_datetime(pollutant_date_range[1]))
             ]
             if not met_filtered_df.empty:
-                st.write("Below is the meteorological data for the selected locations and date range:")
                 st.dataframe(met_filtered_df, use_container_width=True)
             else:
                 st.info("No meteorological data found for the selected locations and date range.")
         else:
             st.error("Meteorological data not loaded.")
-        st.markdown("---")
 
-
-    if display_option == 'Water Quality + Volcanic Activity' or display_option == 'Water Quality + Meteorological + Volcanic Activity':
+    elif display_option == 'Water Quality + Volcanic Activity':
         st.subheader("Related Volcanic Activity Data")
         if not volcanic_df_full.empty:
             volc_filtered_df = volcanic_df_full[
@@ -400,15 +397,45 @@ def display_pollutant_levels_analysis(water_df_full, meteorological_df_full, vol
                 (volcanic_df_full['Date'] <= pd.to_datetime(pollutant_date_range[1]))
             ]
             if not volc_filtered_df.empty:
-                st.write("Below is the volcanic activity data for the selected locations and date range:")
                 st.dataframe(volc_filtered_df, use_container_width=True)
             else:
                 st.info("No volcanic activity data found for the selected locations and date range.")
         else:
             st.error("Volcanic activity data not loaded.")
-        st.markdown("---")
 
-    st.subheader("Raw Water Quality Pollutant Data Table")
+    elif display_option == 'Water Quality + Meteorological + Volcanic Activity':
+        st.subheader("Related Meteorological Data")
+        if not meteorological_df_full.empty:
+            met_filtered_df = meteorological_df_full[
+                (meteorological_df_full['Location'].isin(selected_pollutant_location)) &
+                (meteorological_df_full['Date'] >= pd.to_datetime(pollutant_date_range[0])) &
+                (meteorological_df_full['Date'] <= pd.to_datetime(pollutant_date_range[1]))
+            ]
+            if not met_filtered_df.empty:
+                st.dataframe(met_filtered_df, use_container_width=True)
+            else:
+                st.info("No meteorological data found for the selected locations and date range.")
+        else:
+            st.error("Meteorological data not loaded.")
+
+        st.markdown("---")
+        st.subheader("Related Volcanic Activity Data")
+        if not volcanic_df_full.empty:
+            volc_filtered_df = volcanic_df_full[
+                (volcanic_df_full['Location'].isin(selected_pollutant_location)) &
+                (volcanic_df_full['Date'] >= pd.to_datetime(pollutant_date_range[0])) &
+                (volcanic_df_full['Date'] <= pd.to_datetime(pollutant_date_range[1]))
+            ]
+            if not volc_filtered_df.empty:
+                st.dataframe(volc_filtered_df, use_container_width=True)
+            else:
+                st.info("No volcanic activity data found for the selected locations and date range.")
+        else:
+            st.error("Volcanic activity data not loaded.")
+
+    st.markdown("---")
+
+    st.subheader("Pollutant Data Table")
     if not pollutant_filtered_df_water.empty:
         st.dataframe(pollutant_filtered_df_water[['Date', 'Location'] + available_pollutants], use_container_width=True)
     else:
@@ -605,8 +632,6 @@ if 'current_page' not in st.session_state:
     st.session_state['current_page'] = 'Introduction' # Default page
 if 'selected_data_type' not in st.session_state:
     st.session_state['selected_data_type'] = None # Default no data type selected
-if 'selected_pollutant_display' not in st.session_state:
-    st.session_state['selected_pollutant_display'] = 'Water Quality Only' # Default for pollutant levels display options
 
 # Sidebar for navigation
 st.sidebar.title("Navigation")
@@ -615,7 +640,6 @@ st.sidebar.title("Navigation")
 if st.sidebar.button("Introduction"):
     st.session_state['current_page'] = 'Introduction'
     st.session_state['selected_data_type'] = None # Reset data type when intro is selected
-    st.session_state['selected_pollutant_display'] = None # Reset pollutant display option
 
 # Renamed button for Historical Data Analysis
 if st.sidebar.button("Historical Data Analysis"):
@@ -623,16 +647,11 @@ if st.sidebar.button("Historical Data Analysis"):
     # Default to Water Quality if Historical Data Analysis is newly selected and no sub-type yet
     if st.session_state['selected_data_type'] is None:
         st.session_state['selected_data_type'] = 'Water Quality'
-    st.session_state['selected_pollutant_display'] = None # Reset pollutant display option
 
 # New button for Historical Pollutant Levels
 if st.sidebar.button("Historical Pollutant Levels"):
     st.session_state['current_page'] = 'Historical Pollutant Levels'
-    st.session_state['selected_data_type'] = None # Reset selected data type to avoid conflicts
-    # Default to 'Water Quality Only' when this button is pressed
-    if st.session_state['selected_pollutant_display'] is None:
-        st.session_state['selected_pollutant_display'] = 'Water Quality Only'
-
+    st.session_state['selected_data_type'] = 'Water Quality Only' # Default for pollutant levels
 
 # Display content based on selected page
 if st.session_state['current_page'] == 'Introduction':
@@ -665,3 +684,4 @@ st.markdown("""
 <br>
 <small><i>Note: This dashboard is now loaded with data from 'water_quality_filled (1).csv', 'completed_meteorological_filled.csv', and 'completed_volcanic_flux_filled.csv'. Ensure the CSV columns match the expected parameters for accurate visualization.</i></small>
 """, unsafe_allow_html=True)
+```

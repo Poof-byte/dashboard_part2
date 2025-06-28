@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-# Removed: import plotly.express as px
+from datetime import datetime, timedelta
 
 # Set page configuration
 st.set_page_config(layout="wide", page_title="Environmental Data Analysis Dashboard")
@@ -295,6 +295,64 @@ def display_pollutant_levels_analysis(water_df_full, meteorological_df_full, vol
     # All content removed to make this section blank.
     # You can add content here later if needed.
 
+# --- Function to display WQI Prediction Tool Section ---
+def display_wqi_prediction_tool(water_df_full):
+    st.header("Water Quality Index (WQI) Prediction Tool")
+    st.markdown("Predict the Water Quality Index for a future date. This tool uses a simplified estimation based on historical data.")
+
+    if water_df_full.empty:
+        st.warning("No water quality data loaded. Cannot provide WQI predictions.")
+        return
+
+    # Determine the latest date in the water quality data
+    latest_date = water_df_full['Date'].max()
+    
+    # Set default date for prediction to one month after the latest date
+    default_prediction_date = latest_date + pd.DateOffset(months=1)
+
+    # Date input for future prediction
+    prediction_date = st.date_input(
+        "Select a future date for WQI prediction:",
+        value=default_prediction_date,
+        min_value=latest_date, # User cannot select dates before the latest historical data
+        key='wqi_prediction_date'
+    )
+
+    # Convert selected date to datetime object
+    prediction_datetime = pd.to_datetime(prediction_date)
+
+    if st.button("Predict WQI"):
+        # --- Simplified Prediction Logic ---
+        # For a real application, a trained model (e.g., ARIMA, Prophet, or a regression model)
+        # would be used here to forecast WQI based on historical trends and potentially other features.
+        # This is a placeholder for illustration.
+
+        # Calculate WQI for all historical data to get a baseline
+        wqi_data = water_df_full.copy()
+        wqi_data['WQI'] = wqi_data.apply(calculate_composite_wqi, axis=1)
+        wqi_data['WQI'] = pd.to_numeric(wqi_data['WQI'], errors='coerce')
+        
+        # Get the average WQI from the available data as a simple prediction basis
+        average_wqi = wqi_data['WQI'].mean()
+
+        if pd.isna(average_wqi):
+            st.error("Could not calculate an average WQI from historical data. Please check data validity.")
+            return
+
+        # Display Prediction
+        st.subheader("Predicted WQI")
+        st.write(f"For **{prediction_date.strftime('%Y-%m-%d')}**: ")
+        st.info(f"**Predicted WQI: {average_wqi:.2f}**")
+        st.markdown(f"""
+        <small><i>
+        Note: This WQI prediction is a simplified estimation based on the historical average WQI ({average_wqi:.2f}).
+        For accurate forecasting, a dedicated time-series forecasting model (e.g., ARIMA, Prophet) trained on sufficient historical data
+        and potentially considering meteorological/volcanic factors would be required.
+        </i></small>
+        """, unsafe_allow_html=True)
+    else:
+        st.info("Select a future date and click 'Predict WQI' to see an estimated WQI value.")
+
 
 # --- Function to display Meteorological Analysis Section ---
 def display_meteorological_analysis(df):
@@ -506,21 +564,27 @@ if st.sidebar.button("Historical Data Analysis"):
         st.session_state['selected_data_type'] = 'Water Quality'
     st.session_state['selected_pollutant_display'] = None # Reset pollutant display option
 
-# New button for Historical Pollutant Levels
+# New button for Historical Pollutant Levels (now blank)
 if st.sidebar.button("Historical Pollutant Levels"):
     st.session_state['current_page'] = 'Historical Pollutant Levels'
     st.session_state['selected_data_type'] = None # Reset selected data type to avoid conflicts
-    # Default to 'Water Quality Only' when this button is pressed
-    if st.session_state['selected_pollutant_display'] is None:
-        st.session_state['selected_pollutant_display'] = 'Water Quality Only'
+    st.session_state['selected_pollutant_display'] = None # Reset display option to ensure blank page
+
+# New button for WQI Prediction Tool
+if st.sidebar.button("Predict WQI"):
+    st.session_state['current_page'] = 'Predict WQI'
+    st.session_state['selected_data_type'] = None # Reset data type
+    st.session_state['selected_pollutant_display'] = None # Reset pollutant display option
 
 
 # Display content based on selected page
 if st.session_state['current_page'] == 'Introduction':
     display_introduction()
 elif st.session_state['current_page'] == 'Historical Pollutant Levels':
-    # Pass all dataframes to the pollutant analysis function for combined views
+    # Pass all dataframes, but the function itself is now blank as per request.
     display_pollutant_levels_analysis(water_df, meteorological_df, volcanic_df)
+elif st.session_state['current_page'] == 'Predict WQI':
+    display_wqi_prediction_tool(water_df)
 else: # 'Historical Data Analysis' page is selected
     st.sidebar.markdown("---")
     st.sidebar.subheader("Select Data Type")

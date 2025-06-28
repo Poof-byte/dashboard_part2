@@ -97,8 +97,11 @@ def load_volcanic_data():
 volcanic_df = load_volcanic_data()
 
 
-# --- Water Quality Analysis Section ---
+# ==============================================================================
+# --- WATER QUALITY ANALYSIS SECTION ---
+# ==============================================================================
 st.header("Water Quality Analysis")
+st.markdown("Provides insights into water quality parameters, trends, and historical data.")
 
 if water_df.empty:
     st.error("Cannot proceed with Water Quality Analysis as no data was loaded.")
@@ -127,11 +130,11 @@ else:
                                               (water_filtered_df['Date'] <= pd.to_datetime(water_date_range[1]))]
     else:
         st.warning("No water quality data available for the selected locations to determine date range.")
-        water_filtered_df = pd.DataFrame()
+        water_filtered_df = pd.DataFrame() # Ensure filtered_df is empty if no locations selected
 
 
     # --- Water Quality Parameter Trends ---
-    st.subheader("Water Quality Parameter Trends")
+    st.subheader("Parameter Trends")
     water_parameter_options = [col for col in water_df.columns if col not in ['Date', 'Location']]
     if not water_parameter_options:
         st.warning("No measurable water quality parameters found in the loaded data.")
@@ -155,7 +158,8 @@ else:
 
     st.markdown("---")
 
-    st.subheader("Water Quality Summary Statistics")
+    # --- Water Quality Summary Statistics ---
+    st.subheader("Summary Statistics")
     if not water_filtered_df.empty and water_parameter_options:
         st.dataframe(water_filtered_df.groupby('Location')[water_parameter_options].describe().T.style.set_properties(**{'background-color': '#f0f2f6', 'color': 'black'}), use_container_width=True)
     else:
@@ -163,7 +167,8 @@ else:
 
     st.markdown("---")
 
-    st.subheader("Water Quality Parameter Distribution (Bar Chart of Averages)")
+    # --- Water Quality Parameter Distribution (Bar Chart of Averages) ---
+    st.subheader("Parameter Distribution (Averages)")
     if selected_water_parameter and not water_filtered_df.empty:
         st.write(f'Average {selected_water_parameter} by Location')
         avg_data = water_filtered_df.groupby('Location')[selected_water_parameter].mean().reset_index()
@@ -177,7 +182,7 @@ else:
     st.markdown("---")
 
     # --- Water Quality Historical Data Section ---
-    st.subheader("Water Quality Historical Data")
+    st.subheader("Historical Data")
     if not water_filtered_df.empty:
         st.write("Below is a table displaying the historical water quality data based on your selected filters.")
         st.dataframe(water_filtered_df, use_container_width=True)
@@ -185,12 +190,15 @@ else:
         st.info("No historical water quality data available for the current filters. Please adjust your selections in the sidebar.")
 
 
+st.markdown("---") # Single separator between main sections
 st.markdown("---")
-st.markdown("---") # Double separator for visual distinction between sections
 
 
-# --- Meteorological Analysis Section ---
+# ==============================================================================
+# --- METEOROLOGICAL ANALYSIS SECTION ---
+# ==============================================================================
 st.header("Meteorological Analysis")
+st.markdown("Explores weather conditions including rainfall, temperature, humidity, and wind.")
 
 if meteorological_df.empty:
     st.error("Cannot proceed with Meteorological Analysis as no data was loaded.")
@@ -222,7 +230,7 @@ else:
 
 
     # --- Meteorological Parameter Trends ---
-    st.subheader("Meteorological Parameter Trends")
+    st.subheader("Parameter Trends")
     meteorological_parameter_options = [col for col in meteorological_df.columns if col not in ['Date', 'Location']]
     if not meteorological_parameter_options:
         st.warning("No measurable meteorological parameters found in the loaded data.")
@@ -246,7 +254,8 @@ else:
 
     st.markdown("---")
 
-    st.subheader("Meteorological Summary Statistics")
+    # --- Meteorological Summary Statistics ---
+    st.subheader("Summary Statistics")
     if not meteorological_filtered_df.empty and meteorological_parameter_options:
         st.dataframe(meteorological_filtered_df.groupby('Location')[meteorological_parameter_options].describe().T.style.set_properties(**{'background-color': '#f0f2f6', 'color': 'black'}), use_container_width=True)
     else:
@@ -254,7 +263,8 @@ else:
 
     st.markdown("---")
 
-    st.subheader("Meteorological Parameter Distribution (Bar Chart of Averages)")
+    # --- Meteorological Parameter Distribution (Bar Chart of Averages) ---
+    st.subheader("Parameter Distribution (Averages)")
     if selected_meteorological_parameter and not meteorological_filtered_df.empty:
         st.write(f'Average {selected_meteorological_parameter} by Location')
         avg_data = meteorological_filtered_df.groupby('Location')[selected_meteorological_parameter].mean().reset_index()
@@ -268,7 +278,7 @@ else:
     st.markdown("---")
 
     # --- Meteorological Historical Data Section ---
-    st.subheader("Meteorological Historical Data")
+    st.subheader("Historical Data")
     if not meteorological_filtered_df.empty:
         st.write("Below is a table displaying the historical meteorological data based on your selected filters.")
         st.dataframe(meteorological_filtered_df, use_container_width=True)
@@ -276,12 +286,15 @@ else:
         st.info("No historical meteorological data available for the current filters. Please adjust your selections in the sidebar.")
 
 
+st.markdown("---") # Single separator between main sections
 st.markdown("---")
-st.markdown("---") # Double separator for visual distinction between sections
 
 
-# --- Volcanic Activity Analysis Section ---
+# ==============================================================================
+# --- VOLCANIC ACTIVITY ANALYSIS SECTION ---
+# ==============================================================================
 st.header("Volcanic Activity Analysis")
+st.markdown("Examines volcanic gas flux data to monitor activity levels.")
 
 if volcanic_df.empty:
     st.error("Cannot proceed with Volcanic Activity Analysis as no data was loaded.")
@@ -313,7 +326,7 @@ else:
 
 
     # --- Volcanic Activity Parameter Trends ---
-    st.subheader("Volcanic Activity Parameter Trends")
+    st.subheader("Parameter Trends")
     volcanic_parameter_options = [col for col in volcanic_df.columns if col not in ['Date', 'Location']]
     if not volcanic_parameter_options:
         st.warning("No measurable volcanic parameters found in the loaded data.")
@@ -337,7 +350,8 @@ else:
 
     st.markdown("---")
 
-    st.subheader("Volcanic Activity Summary Statistics")
+    # --- Volcanic Activity Summary Statistics ---
+    st.subheader("Summary Statistics")
     if not volcanic_filtered_df.empty and volcanic_parameter_options:
         st.dataframe(volcanic_filtered_df.groupby('Location')[volcanic_parameter_options].describe().T.style.set_properties(**{'background-color': '#f0f2f6', 'color': 'black'}), use_container_width=True)
     else:
@@ -345,7 +359,8 @@ else:
 
     st.markdown("---")
 
-    st.subheader("Volcanic Activity Parameter Distribution (Bar Chart of Averages)")
+    # --- Volcanic Activity Parameter Distribution (Bar Chart of Averages) ---
+    st.subheader("Parameter Distribution (Averages)")
     if selected_volcanic_parameter and not volcanic_filtered_df.empty:
         st.write(f'Average {selected_volcanic_parameter} by Location')
         avg_data = volcanic_filtered_df.groupby('Location')[selected_volcanic_parameter].mean().reset_index()
@@ -359,7 +374,7 @@ else:
     st.markdown("---")
 
     # --- Volcanic Activity Historical Data Section ---
-    st.subheader("Volcanic Activity Historical Data")
+    st.subheader("Historical Data")
     if not volcanic_filtered_df.empty:
         st.write("Below is a table displaying the historical volcanic activity data based on your selected filters.")
         st.dataframe(volcanic_filtered_df, use_container_width=True)

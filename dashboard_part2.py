@@ -234,47 +234,12 @@ def display_water_quality_analysis(df):
 
     st.markdown("---")
 
+    # Removed pollutant levels trend from here, now in separate section
     # --- Pollutant Levels Trend ---
-    st.subheader("Pollutant Levels Trend (Ammonia, pH, Nitrate, Phosphate)")
-    pollutant_options = ['AMMONIA', 'PH_LEVEL', 'NITRATE_NITRITE', 'PHOSPHATE']
-    
-    # Filter pollutant options based on available columns in the DataFrame
-    available_pollutants = [p for p in pollutant_options if p in water_filtered_df.columns]
+    # st.subheader("Pollutant Levels Trend (Ammonia, pH, Nitrate, Phosphate)")
+    # ... (code removed)
 
-    if not available_pollutants:
-        st.warning("No relevant pollutant data (Ammonia, pH, Nitrate, Phosphate) found in the filtered data.")
-    else:
-        selected_pollutants = st.multiselect(
-            "Select pollutant(s) to view trend:",
-            options=available_pollutants,
-            default=available_pollutants if available_pollutants else None,
-            key='select_pollutants'
-        )
-
-        if selected_pollutants and not water_filtered_df.empty:
-            st.write(f'Trend of selected pollutant levels over time by Location:')
-            try:
-                # Prepare data for plotting selected pollutants
-                # Melt the DataFrame to have 'variable' (pollutant name) and 'value' columns
-                pollutant_plot_data = water_filtered_df[['Date', 'Location'] + selected_pollutants].melt(
-                    id_vars=['Date', 'Location'], var_name='Pollutant', value_name='Value'
-                )
-                
-                # Pivot table to get pollutants as columns for st.line_chart
-                line_chart_pollutants = pollutant_plot_data.pivot_table(
-                    index='Date', columns=['Location', 'Pollutant'], values='Value', aggfunc='mean'
-                ).fillna(0)
-                st.line_chart(line_chart_pollutants)
-                st.info("This chart displays the trend of selected pollutant levels over time, categorized by location.")
-            except Exception as e:
-                st.warning(f"Could not render pollutant levels chart. Please adjust filters or check data. Error: {e}")
-                st.dataframe(water_filtered_df[['Date', 'Location'] + selected_pollutants])
-        elif selected_pollutants:
-            st.info("No data available for the selected filters for plotting pollutant trends.")
-        else:
-            st.info("Please select at least one pollutant to view trends.")
-
-    st.markdown("---")
+    # st.markdown("---")
 
     # --- Water Quality Summary Statistics ---
     st.subheader("Summary Statistics")
@@ -328,6 +293,72 @@ def display_water_quality_analysis(df):
             st.warning("Not enough valid WQI data points to display a trend. Ensure relevant parameters are present and not all are 'N/A'.")
     else:
         st.info("No water quality data available to compute WQI trend. Please adjust your selections.")
+
+
+# --- Function to display Historical Pollutant Levels Analysis Section ---
+def display_pollutant_levels_analysis(df):
+    st.header("Historical Pollutant Levels Analysis")
+    st.markdown("Provides detailed trends for key water pollutants: Ammonia, pH Level, Nitrate, and Phosphate.")
+
+    if df.empty:
+        st.error("Cannot proceed with Pollutant Levels Analysis as no water quality data was loaded.")
+        return
+
+    # --- Sidebar Filters for Pollutant Data (using water_df) ---
+    st.sidebar.header("Filter Pollutant Data")
+    selected_pollutant_location = st.sidebar.multiselect(
+        "Select Location(s) for Pollutants:",
+        options=df['Location'].unique(),
+        default=df['Location'].unique(),
+        key='pollutant_location_filter'
+    )
+    pollutant_filtered_df = df[df['Location'].isin(selected_pollutant_location)]
+
+    if not pollutant_filtered_df.empty:
+        pollutant_min_date = pollutant_filtered_df['Date'].min().to_pydatetime()
+        pollutant_max_date = pollutant_filtered_df['Date'].max().to_pydatetime()
+        pollutant_date_range = st.sidebar.slider(
+            "Select Pollutant Date Range:",
+            value=(pollutant_min_date, pollutant_max_date),
+            format="YYYY-MM-DD",
+            key='pollutant_date_range_filter'
+        )
+        pollutant_filtered_df = pollutant_filtered_df[(pollutant_filtered_df['Date'] >= pd.to_datetime(pollutant_date_range[0])) &
+                                                      (pollutant_filtered_df['Date'] <= pd.to_datetime(pollutant_date_range[1]))]
+    else:
+        st.warning("No pollutant data available for the selected locations to determine date range.")
+        pollutant_filtered_df = pd.DataFrame()
+
+
+    pollutant_options = ['AMMONIA', 'PH_LEVEL', 'NITRATE_NITRITE', 'PHOSPHATE']
+    
+    # Filter pollutant options based on available columns in the DataFrame
+    available_pollutants = [p for p in pollutant_options if p in pollutant_filtered_df.columns]
+
+    if not available_pollutants:
+        st.warning("No relevant pollutant data (Ammonia, pH, Nitrate, Phosphate) found in the filtered data for charting.")
+    else:
+        st.subheader("Individual Pollutant Level Trends")
+        for pollutant in available_pollutants:
+            st.write(f'Trend of {pollutant} Over Time by Location:')
+            try:
+                # Pivot table to get locations as columns for st.line_chart
+                line_chart_pollutant = pollutant_filtered_df.pivot_table(
+                    index='Date', columns='Location', values=pollutant, aggfunc='mean'
+                ).fillna(0)
+                st.line_chart(line_chart_pollutant)
+            except Exception as e:
+                st.warning(f"Could not render chart for {pollutant}. Error: {e}")
+                st.dataframe(pollutant_filtered_df[['Date', 'Location', pollutant]])
+        st.info("These charts display the trend of individual pollutant levels over time, categorized by location, based on your filters.")
+    
+    st.markdown("---")
+
+    st.subheader("Pollutant Data Table")
+    if not pollutant_filtered_df.empty:
+        st.dataframe(pollutant_filtered_df[['Date', 'Location'] + available_pollutants], use_container_width=True)
+    else:
+        st.info("No pollutant data available for the selected filters.")
 
 
 # --- Function to display Meteorological Analysis Section ---
@@ -536,9 +567,16 @@ if st.sidebar.button("Historical Data Analysis"):
     if st.session_state['selected_data_type'] is None:
         st.session_state['selected_data_type'] = 'Water Quality'
 
+# New button for Historical Pollutant Levels
+if st.sidebar.button("Historical Pollutant Levels"):
+    st.session_state['current_page'] = 'Historical Pollutant Levels'
+    st.session_state['selected_data_type'] = None # Reset selected data type to avoid conflicts
+
 # Display content based on selected page
 if st.session_state['current_page'] == 'Introduction':
     display_introduction()
+elif st.session_state['current_page'] == 'Historical Pollutant Levels':
+    display_pollutant_levels_analysis(water_df) # This section specifically uses water_df
 else: # 'Historical Data Analysis' page is selected
     st.sidebar.markdown("---")
     st.sidebar.subheader("Select Data Type")

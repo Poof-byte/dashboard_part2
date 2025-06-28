@@ -5,34 +5,6 @@ import pandas as pd
 # Set page configuration
 st.set_page_config(layout="wide", page_title="Environmental Data Analysis Dashboard")
 
-# --- Introduction Section ---
-st.markdown("""
-## Welcome to the Environmental Data Analysis Dashboard!
-
-This interactive dashboard is designed to provide comprehensive insights into various aspects of environmental data, focusing on water quality, meteorological conditions, and volcanic activity. Utilizing Streamlit, a powerful open-source app framework, we aim to make complex environmental data accessible and understandable for researchers, policymakers, and the public.
-
-**Why Environmental Monitoring Matters:**
-
-Access to clean and safe water is fundamental for human health, ecosystem integrity, and sustainable development. Understanding meteorological conditions is vital for agriculture, disaster preparedness, and climate studies. Assessing volcanic activity is crucial for hazard assessment and risk mitigation. Monitoring and analyzing these environmental parameters are crucial for:
-
-* **Protecting Public Health:** Identifying contaminants in water and assessing volcanic hazards.
-* **Environmental Conservation:** Assessing the health of aquatic ecosystems and understanding geological processes.
-* **Resource Management:** Informing decisions related to water treatment, allocation, and disaster preparedness, as well as agricultural planning and climate impact assessment.
-
-**What You Can Explore:**
-
-This dashboard will allow you to:
-
-* Visualize key environmental parameters over time and across different locations.
-* Identify trends and anomalies in data.
-* Compare data against established standards and guidelines (where applicable).
-* Gain a deeper understanding of the factors influencing environmental health.
-
-We hope this tool empowers you with valuable insights into vital environmental resources and phenomena.
-""")
-
-st.markdown("---") # Separator
-
 # --- Data Loading and Preprocessing - Water Quality ---
 @st.cache_data
 def load_water_quality_data():
@@ -62,7 +34,6 @@ def load_meteorological_data():
         df = pd.read_csv('completed_meteorological_filled.csv')
         df['Date'] = pd.to_datetime(df['YEAR'].astype(str) + '-' + df['MONTH'].astype(str) + '-01')
         df.rename(columns={'LOCATION': 'Location'}, inplace=True)
-        # Using column names directly from the provided header:
         meteorological_numeric_cols = ['RAINFALL', 'TMAX', 'TMIN', 'RH', 'WIND SPEED', 'WIND DIRECTION']
         df = df[['Date', 'Location'] + [col for col in meteorological_numeric_cols if col in df.columns]]
         return df
@@ -83,7 +54,6 @@ def load_volcanic_data():
         df = pd.read_csv('completed_volcanic_flux_filled.csv')
         df['Date'] = pd.to_datetime(df['YEAR'].astype(str) + '-' + df['MONTH'].astype(str) + '-01')
         df.rename(columns={'LOCATION': 'Location'}, inplace=True)
-        # Using column names based on user's previous input
         volcanic_numeric_cols = ['CO2 FLUX', 'SO2 FLUX']
         df = df[['Date', 'Location'] + [col for col in volcanic_numeric_cols if col in df.columns]]
         return df
@@ -97,25 +67,51 @@ def load_volcanic_data():
 volcanic_df = load_volcanic_data()
 
 
-# ==============================================================================
-# --- WATER QUALITY ANALYSIS SECTION ---
-# ==============================================================================
-st.header("Water Quality Analysis")
-st.markdown("Provides insights into water quality parameters, trends, and historical data.")
+# --- Function to display the Introduction Section ---
+def display_introduction():
+    st.markdown("""
+    ## Welcome to the Environmental Data Analysis Dashboard!
 
-if water_df.empty:
-    st.error("Cannot proceed with Water Quality Analysis as no data was loaded.")
-    water_filtered_df = pd.DataFrame() # Ensure filtered_df is empty
-else:
+    This interactive dashboard is designed to provide comprehensive insights into various aspects of environmental data, focusing on water quality, meteorological conditions, and volcanic activity. Utilizing Streamlit, a powerful open-source app framework, we aim to make complex environmental data accessible and understandable for researchers, policymakers, and the public.
+
+    **Why Environmental Monitoring Matters:**
+
+    Access to clean and safe water is fundamental for human health, ecosystem integrity, and sustainable development. Understanding meteorological conditions is vital for agriculture, disaster preparedness, and climate studies. Assessing volcanic activity is crucial for hazard assessment and risk mitigation. Monitoring and analyzing these environmental parameters are crucial for:
+
+    * **Protecting Public Health:** Identifying contaminants in water and assessing volcanic hazards.
+    * **Environmental Conservation:** Assessing the health of aquatic ecosystems and understanding geological processes.
+    * **Resource Management:** Informing decisions related to water treatment, allocation, and disaster preparedness, as well as agricultural planning and climate impact assessment.
+
+    **What You Can Explore:**
+
+    This dashboard will allow you to:
+
+    * Visualize key environmental parameters over time and across different locations.
+    * Identify trends and anomalies in data.
+    * Compare data against established standards and guidelines (where applicable).
+    * Gain a deeper understanding of the factors influencing environmental health.
+
+    We hope this tool empowers you with valuable insights into vital environmental resources and phenomena.
+    """)
+
+# --- Function to display Water Quality Analysis Section ---
+def display_water_quality_analysis(df):
+    st.header("Water Quality Analysis")
+    st.markdown("Provides insights into water quality parameters, trends, and historical data.")
+
+    if df.empty:
+        st.error("Cannot proceed with Water Quality Analysis as no data was loaded.")
+        return
+
     # --- Sidebar Filters for Water Quality ---
     st.sidebar.header("Filter Water Quality Data")
     selected_water_location = st.sidebar.multiselect(
         "Select Water Location(s):",
-        options=water_df['Location'].unique(),
-        default=water_df['Location'].unique(),
+        options=df['Location'].unique(),
+        default=df['Location'].unique(),
         key='water_location_filter'
     )
-    water_filtered_df = water_df[water_df['Location'].isin(selected_water_location)]
+    water_filtered_df = df[df['Location'].isin(selected_water_location)]
 
     if not water_filtered_df.empty:
         water_min_date = water_filtered_df['Date'].min().to_pydatetime()
@@ -135,7 +131,7 @@ else:
 
     # --- Water Quality Parameter Trends ---
     st.subheader("Parameter Trends")
-    water_parameter_options = [col for col in water_df.columns if col not in ['Date', 'Location']]
+    water_parameter_options = [col for col in df.columns if col not in ['Date', 'Location']]
     if not water_parameter_options:
         st.warning("No measurable water quality parameters found in the loaded data.")
         selected_water_parameter = None
@@ -153,7 +149,7 @@ else:
     elif selected_water_parameter:
         st.info("No water quality data available for the selected filters for plotting trends.")
     else:
-        if not water_df.empty:
+        if not df.empty:
             st.info("Please select a water quality parameter to view trends.")
 
     st.markdown("---")
@@ -176,7 +172,7 @@ else:
     elif selected_water_parameter:
         st.info("No water quality data available for the selected filters for plotting distribution.")
     else:
-        if not water_df.empty:
+        if not df.empty:
             st.info("Please select a water quality parameter to view distribution.")
 
     st.markdown("---")
@@ -189,29 +185,24 @@ else:
     else:
         st.info("No historical water quality data available for the current filters. Please adjust your selections in the sidebar.")
 
+# --- Function to display Meteorological Analysis Section ---
+def display_meteorological_analysis(df):
+    st.header("Meteorological Analysis")
+    st.markdown("Explores weather conditions including rainfall, temperature, humidity, and wind.")
 
-st.markdown("---") # Single separator between main sections
-st.markdown("---")
+    if df.empty:
+        st.error("Cannot proceed with Meteorological Analysis as no data was loaded.")
+        return
 
-
-# ==============================================================================
-# --- METEOROLOGICAL ANALYSIS SECTION ---
-# ==============================================================================
-st.header("Meteorological Analysis")
-st.markdown("Explores weather conditions including rainfall, temperature, humidity, and wind.")
-
-if meteorological_df.empty:
-    st.error("Cannot proceed with Meteorological Analysis as no data was loaded.")
-else:
     # --- Sidebar Filters for Meteorological Data ---
     st.sidebar.header("Filter Meteorological Data")
     selected_meteorological_location = st.sidebar.multiselect(
         "Select Meteorological Location(s):",
-        options=meteorological_df['Location'].unique(),
-        default=meteorological_df['Location'].unique(),
+        options=df['Location'].unique(),
+        default=df['Location'].unique(),
         key='meteorological_location_filter'
     )
-    meteorological_filtered_df = meteorological_df[meteorological_df['Location'].isin(selected_meteorological_location)]
+    meteorological_filtered_df = df[df['Location'].isin(selected_meteorological_location)]
 
     if not meteorological_filtered_df.empty:
         meteorological_min_date = meteorological_filtered_df['Date'].min().to_pydatetime()
@@ -231,7 +222,7 @@ else:
 
     # --- Meteorological Parameter Trends ---
     st.subheader("Parameter Trends")
-    meteorological_parameter_options = [col for col in meteorological_df.columns if col not in ['Date', 'Location']]
+    meteorological_parameter_options = [col for col in df.columns if col not in ['Date', 'Location']]
     if not meteorological_parameter_options:
         st.warning("No measurable meteorological parameters found in the loaded data.")
         selected_meteorological_parameter = None
@@ -249,7 +240,7 @@ else:
     elif selected_meteorological_parameter:
         st.info("No meteorological data available for the selected filters for plotting trends.")
     else:
-        if not meteorological_df.empty:
+        if not df.empty:
             st.info("Please select a meteorological parameter to view trends.")
 
     st.markdown("---")
@@ -272,7 +263,7 @@ else:
     elif selected_meteorological_parameter:
         st.info("No meteorological data available for the selected filters for plotting distribution.")
     else:
-        if not meteorological_df.empty:
+        if not df.empty:
             st.info("Please select a meteorological parameter to view distribution.")
 
     st.markdown("---")
@@ -285,29 +276,24 @@ else:
     else:
         st.info("No historical meteorological data available for the current filters. Please adjust your selections in the sidebar.")
 
+# --- Function to display Volcanic Activity Analysis Section ---
+def display_volcanic_activity_analysis(df):
+    st.header("Volcanic Activity Analysis")
+    st.markdown("Examines volcanic gas flux data to monitor activity levels.")
 
-st.markdown("---") # Single separator between main sections
-st.markdown("---")
+    if df.empty:
+        st.error("Cannot proceed with Volcanic Activity Analysis as no data was loaded.")
+        return
 
-
-# ==============================================================================
-# --- VOLCANIC ACTIVITY ANALYSIS SECTION ---
-# ==============================================================================
-st.header("Volcanic Activity Analysis")
-st.markdown("Examines volcanic gas flux data to monitor activity levels.")
-
-if volcanic_df.empty:
-    st.error("Cannot proceed with Volcanic Activity Analysis as no data was loaded.")
-else:
     # --- Sidebar Filters for Volcanic Activity ---
     st.sidebar.header("Filter Volcanic Activity Data")
     selected_volcanic_location = st.sidebar.multiselect(
         "Select Volcanic Location(s):",
-        options=volcanic_df['Location'].unique(),
-        default=volcanic_df['Location'].unique(),
+        options=df['Location'].unique(),
+        default=df['Location'].unique(),
         key='volcanic_location_filter'
     )
-    volcanic_filtered_df = volcanic_df[volcanic_df['Location'].isin(selected_volcanic_location)]
+    volcanic_filtered_df = df[df['Location'].isin(selected_volcanic_location)]
 
     if not volcanic_filtered_df.empty:
         volcanic_min_date = volcanic_filtered_df['Date'].min().to_pydatetime()
@@ -327,7 +313,7 @@ else:
 
     # --- Volcanic Activity Parameter Trends ---
     st.subheader("Parameter Trends")
-    volcanic_parameter_options = [col for col in volcanic_df.columns if col not in ['Date', 'Location']]
+    volcanic_parameter_options = [col for col in df.columns if col not in ['Date', 'Location']]
     if not volcanic_parameter_options:
         st.warning("No measurable volcanic parameters found in the loaded data.")
         selected_volcanic_parameter = None
@@ -345,7 +331,7 @@ else:
     elif selected_volcanic_parameter:
         st.info("No volcanic activity data available for the selected filters for plotting trends.")
     else:
-        if not volcanic_df.empty:
+        if not df.empty:
             st.info("Please select a volcanic parameter to view trends.")
 
     st.markdown("---")
@@ -368,7 +354,7 @@ else:
     elif selected_volcanic_parameter:
         st.info("No volcanic activity data available for the selected filters for plotting distribution.")
     else:
-        if not volcanic_df.empty:
+        if not df.empty:
             st.info("Please select a volcanic parameter to view distribution.")
 
     st.markdown("---")
@@ -381,6 +367,33 @@ else:
     else:
         st.info("No historical volcanic activity data available for the current filters. Please adjust your selections in the sidebar.")
 
+
+# --- Main Application Logic ---
+
+# Initialize session state for current page
+if 'current_page' not in st.session_state:
+    st.session_state['current_page'] = 'Introduction' # Default page
+
+# Sidebar for navigation
+st.sidebar.title("Navigation")
+if st.sidebar.button("Introduction"):
+    st.session_state['current_page'] = 'Introduction'
+if st.sidebar.button("Water Quality Data"):
+    st.session_state['current_page'] = 'Water Quality'
+if st.sidebar.button("Meteorological Data"):
+    st.session_state['current_page'] = 'Meteorological'
+if st.sidebar.button("Volcanic Activity Data"):
+    st.session_state['current_page'] = 'Volcanic Activity'
+
+# Display content based on selected page
+if st.session_state['current_page'] == 'Introduction':
+    display_introduction()
+elif st.session_state['current_page'] == 'Water Quality':
+    display_water_quality_analysis(water_df)
+elif st.session_state['current_page'] == 'Meteorological':
+    display_meteorological_analysis(meteorological_df)
+elif st.session_state['current_page'] == 'Volcanic Activity':
+    display_volcanic_activity_analysis(volcanic_df)
 
 # --- Overall Disclaimer ---
 st.markdown("""

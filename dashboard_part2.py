@@ -299,10 +299,10 @@ def display_pollutant_levels_analysis(water_df_full, meteorological_df_full, vol
 # --- Function to display WQI Prediction Tool Section ---
 def display_wqi_prediction_tool(water_df_full):
     st.header("Water Quality Index (WQI) Prediction Tool")
-    st.markdown("Predict the Water Quality Index for a future date. This tool attempts to project a basic trend based on historical water quality data.")
+    st.markdown("Predict the Water Quality Index and key pollutant levels for a future date. This tool attempts to project basic trends based on historical water quality data.")
 
     if water_df_full.empty:
-        st.warning("No water quality data loaded. Cannot provide WQI predictions.")
+        st.warning("No water quality data loaded. Cannot provide WQI or pollutant predictions.")
         return
 
     # Calculate WQI for all historical data to get a baseline
@@ -328,7 +328,7 @@ def display_wqi_prediction_tool(water_df_full):
 
     # Date input for future prediction
     prediction_date = st.date_input(
-        "Select a future date for WQI prediction:",
+        "Select a future date for prediction:",
         value=default_prediction_date,
         min_value=latest_date_available, # User cannot select dates before the latest historical data
         key='wqi_prediction_date'
@@ -337,117 +337,116 @@ def display_wqi_prediction_tool(water_df_full):
     # Convert selected date to datetime object
     prediction_datetime = pd.to_datetime(prediction_date)
 
-    if st.button("Predict WQI"):
-        # --- Simplified Trend-Based Prediction Logic ---
-        
+    if st.button("Predict"): # Changed button text to be more general
+        st.subheader("Prediction Results")
+
+        # --- WQI Prediction ---
         # Consider a window of the last X months for trend analysis
-        # Using a fixed window (e.g., 12 months) for a more stable trend
         trend_window_months = 12 
-        
         start_trend_date = latest_date_available - pd.DateOffset(months=trend_window_months - 1)
         
-        trend_data = wqi_data_valid[wqi_data_valid['Date'] >= start_trend_date].copy()
-
-        # Prepare data for plotting
-        plot_data = wqi_data_valid[['Date', 'WQI']].copy()
+        # Trend data for WQI
+        wqi_trend_data = wqi_data_valid[wqi_data_valid['Date'] >= start_trend_date].copy()
         
-        predicted_wqi_value = None # Initialize to None
+        # Prepare historical WQI data for plotting (average across locations for each date)
+        historical_wqi_plot_data = wqi_data_valid.groupby('Date')['WQI'].mean().reset_index()
+        
+        predicted_wqi_value = None
 
-        if len(trend_data) >= 2: # Need at least 2 points to calculate a linear trend
-            # Convert dates to numerical values (e.g., months since a fixed epoch or just a simple ordinal)
-            # Using ordinal day for simplicity
-            trend_data['Date_Ordinal'] = trend_data['Date'].apply(lambda x: x.toordinal())
-            
-            # Use overall trend from the available data in the window
-            X = trend_data['Date_Ordinal'].values.reshape(-1, 1)
-            y = trend_data['WQI'].values
+        if len(wqi_trend_data) >= 2: # Need at least 2 points to calculate a linear trend
+            wqi_trend_data['Date_Ordinal'] = wqi_trend_data['Date'].apply(lambda x: x.toordinal())
+            X_wqi = wqi_trend_data['Date_Ordinal'].values.reshape(-1, 1)
+            y_wqi = wqi_trend_data['WQI'].values
 
             try:
-                # Fit a simple linear regression model (polynomial of degree 1)
-                poly_coeffs = np.polyfit(X.flatten(), y, 1)
-                # The prediction function is y = m*x + c, where m = poly_coeffs[0], c = poly_coeffs[1]
-                m, c = poly_coeffs[0], poly_coeffs[1]
-                
+                m_wqi, c_wqi = np.polyfit(X_wqi.flatten(), y_wqi, 1)
                 future_date_ordinal = prediction_datetime.toordinal()
-                predicted_wqi_value = m * future_date_ordinal + c
-
-                # Clamp the WQI to be within a reasonable range (e.g., 0-100)
-                predicted_wqi_value = max(0, min(100, predicted_wqi_value))
-
-                st.subheader("Predicted WQI (Trend-Based)")
-                st.write(f"For **{prediction_date.strftime('%Y-%m-%d')}**: ")
-                st.info(f"**Predicted WQI: {predicted_wqi_value:.2f}**")
-                st.markdown(f"""
-                <small><i>
-                Note: This WQI prediction is a simplified estimation based on a linear trend calculated from the last {trend_window_months} months of historical WQI data.
-                For accurate and robust forecasting, a dedicated time-series forecasting model (e.g., ARIMA, Prophet) trained on sufficient historical data
-                and potentially considering meteorological/volcanic factors, as well as seasonality, would be required.
-                </i></small>
-                """, unsafe_allow_html=True)
+                predicted_wqi_value = m_wqi * future_date_ordinal + c_wqi
+                predicted_wqi_value = max(0, min(100, predicted_wqi_value)) # Clamp WQI
 
             except np.linalg.LinAlgError:
-                st.warning("Not enough data points or data is constant in the trend window to calculate a meaningful trend. Reverting to historical average WQI.")
-                predicted_wqi_value = wqi_data_valid['WQI'].mean()
-                st.subheader("Predicted WQI (Historical Average)")
-                st.write(f"For **{prediction_date.strftime('%Y-%m-%d')}**: ")
-                st.info(f"**Predicted WQI: {predicted_wqi_value:.2f}**")
-                st.markdown(f"""
-                <small><i>
-                Note: This WQI prediction is a simplified estimation based on the overall historical average WQI ({predicted_wqi_value:.2f}).
-                For accurate forecasting, a dedicated time-series forecasting model (e.g., ARIMA, Prophet) trained on sufficient historical data
-                and potentially considering meteorological/volcanic factors would be required.
-                </i></small>
-                """, unsafe_allow_html=True)
+                predicted_wqi_value = wqi_data_valid['WQI'].mean() # Fallback to average
             except Exception as e:
-                st.error(f"An error occurred during trend calculation: {e}. Reverting to historical average WQI.")
-                predicted_wqi_value = wqi_data_valid['WQI'].mean()
-                st.subheader("Predicted WQI (Historical Average)")
-                st.write(f"For **{prediction_date.strftime('%Y-%m-%d')}**: ")
-                st.info(f"**Predicted WQI: {predicted_wqi_value:.2f}**")
-                st.markdown(f"""
-                <small><i>
-                Note: This WQI prediction is a simplified estimation based on the overall historical average WQI ({predicted_wqi_value:.2f}).
-                For accurate forecasting, a dedicated time-series forecasting model (e.g., ARIMA, Prophet) trained on sufficient historical data
-                and potentially considering meteorological/volcanic factors would be required.
-                </i></small>
-                """, unsafe_allow_html=True)
+                predicted_wqi_value = wqi_data_valid['WQI'].mean() # Fallback to average
 
         else:
-            # Fallback to overall average if not enough data for trend
-            predicted_wqi_value = wqi_data_valid['WQI'].mean()
-            st.subheader("Predicted WQI (Historical Average)")
-            st.write(f"For **{prediction_date.strftime('%Y-%m-%d')}**: ")
-            st.info(f"**Predicted WQI: {predicted_wqi_value:.2f}**")
-            st.markdown(f"""
-            <small><i>
-            Note: This WQI prediction is a simplified estimation based on the overall historical average WQI ({predicted_wqi_value:.2f})
-            due to insufficient data for trend analysis.
-            For accurate forecasting, a dedicated time-series forecasting model (e.g., ARIMA, Prophet) trained on sufficient historical data
-            and potentially considering meteorological/volcanic factors would be required.
-            </i></small>
-            """, unsafe_allow_html=True)
+            predicted_wqi_value = wqi_data_valid['WQI'].mean() # Fallback to average
         
-        # Add the predicted point to the plot data
         if predicted_wqi_value is not None:
-            # Ensure the plot_data only has one WQI column
-            plot_data = plot_data.groupby('Date')['WQI'].mean().reset_index() # Aggregate WQI by date
-            
-            # Create a dataframe for the predicted point
-            predicted_point_df = pd.DataFrame({
+            predicted_point_wqi_df = pd.DataFrame({
                 'Date': [prediction_datetime],
                 'WQI': [predicted_wqi_value]
             })
-            # Concatenate historical data with the predicted point
-            combined_plot_data = pd.concat([plot_data, predicted_point_df], ignore_index=True)
-            combined_plot_data = combined_plot_data.sort_values(by='Date')
+            combined_wqi_plot_data = pd.concat([historical_wqi_plot_data, predicted_point_wqi_df], ignore_index=True)
+            combined_wqi_plot_data = combined_wqi_plot_data.sort_values(by='Date')
 
-            st.subheader("WQI Trend and Prediction")
-            st.line_chart(combined_plot_data.set_index('Date'))
-            st.markdown("The chart above shows the historical WQI trend and the predicted WQI for your selected future date.")
+            st.subheader("Water Quality Index (WQI) Trend and Prediction")
+            st.line_chart(combined_wqi_plot_data.set_index('Date'))
+            st.info(f"Predicted WQI for {prediction_date.strftime('%Y-%m-%d')}: **{predicted_wqi_value:.2f}**")
+            st.markdown("""
+            <small><i>Note: WQI prediction is a simplified estimation based on a linear trend from historical data.</i></small>
+            """, unsafe_allow_html=True)
+        st.markdown("---")
+
+
+        # --- Individual Pollutant Predictions ---
+        pollutants_to_predict = ['PH_LEVEL', 'AMMONIA', 'NITRATE_NITRITE', 'PHOSPHATE']
+        
+        for pollutant in pollutants_to_predict:
+            if pollutant in water_df_full.columns:
+                st.subheader(f"{pollutant.replace('_', ' ').title()} Trend and Prediction")
+                
+                # Prepare historical pollutant data for plotting (average across locations for each date)
+                historical_pollutant_plot_data = water_df_full.groupby('Date')[pollutant].mean().reset_index()
+                
+                # Trend data for individual pollutant
+                pollutant_trend_data = water_df_full[water_df_full['Date'] >= start_trend_date].copy()
+                pollutant_trend_data = pollutant_trend_data.dropna(subset=[pollutant]) # Drop NaNs for this specific pollutant
+                
+                predicted_pollutant_value = None
+
+                if len(pollutant_trend_data) >= 2:
+                    pollutant_trend_data['Date_Ordinal'] = pollutant_trend_data['Date'].apply(lambda x: x.toordinal())
+                    X_pollutant = pollutant_trend_data['Date_Ordinal'].values.reshape(-1, 1)
+                    y_pollutant = pollutant_trend_data[pollutant].values
+
+                    try:
+                        m_pollutant, c_pollutant = np.polyfit(X_pollutant.flatten(), y_pollutant, 1)
+                        predicted_pollutant_value = m_pollutant * future_date_ordinal + c_pollutant
+
+                        # Apply specific clamping if needed for each pollutant (e.g., pH 0-14, Ammonia non-negative)
+                        if pollutant == 'PH_LEVEL':
+                            predicted_pollutant_value = max(0.0, min(14.0, predicted_pollutant_value))
+                        else: # For Ammonia, Nitrate, Phosphate (concentrations, should be non-negative)
+                            predicted_pollutant_value = max(0.0, predicted_pollutant_value)
+
+                    except np.linalg.LinAlgError:
+                        predicted_pollutant_value = water_df_full[pollutant].mean() # Fallback to average
+                    except Exception as e:
+                        predicted_pollutant_value = water_df_full[pollutant].mean() # Fallback to average
+                else:
+                    predicted_pollutant_value = water_df_full[pollutant].mean() # Fallback to average
+
+                if predicted_pollutant_value is not None:
+                    predicted_point_pollutant_df = pd.DataFrame({
+                        'Date': [prediction_datetime],
+                        pollutant: [predicted_pollutant_value]
+                    })
+                    combined_pollutant_plot_data = pd.concat([historical_pollutant_plot_data, predicted_point_pollutant_df], ignore_index=True)
+                    combined_pollutant_plot_data = combined_pollutant_plot_data.sort_values(by='Date')
+
+                    st.line_chart(combined_pollutant_plot_data.set_index('Date'))
+                    st.info(f"Predicted {pollutant.replace('_', ' ').title()} for {prediction_date.strftime('%Y-%m-%d')}: **{predicted_pollutant_value:.2f}**")
+                    st.markdown("""
+                    <small><i>Note: Pollutant prediction is a simplified estimation based on a linear trend from historical data.</i></small>
+                    """, unsafe_allow_html=True)
+                st.markdown("---")
+            else:
+                st.warning(f"Pollutant '{pollutant}' not found in the water quality data. Cannot provide prediction.")
 
 
     else:
-        st.info("Select a future date and click 'Predict WQI' to see an estimated WQI value. This prediction is based on historical trends found in the water quality data.")
+        st.info("Select a future date and click 'Predict' to see estimated WQI and pollutant values. These predictions are based on historical trends found in the water quality data.")
 
 
 # --- Function to display Meteorological Analysis Section ---

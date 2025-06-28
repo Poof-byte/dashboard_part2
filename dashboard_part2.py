@@ -3,180 +3,260 @@ import pandas as pd
 # Removed: import plotly.express as px
 
 # Set page configuration
-st.set_page_config(layout="wide", page_title="Water Quality Analysis Dashboard")
+st.set_page_config(layout="wide", page_title="Environmental Data Analysis Dashboard")
 
 # --- Introduction Section ---
 st.markdown("""
-## Welcome to the Water Quality Analysis Dashboard!
+## Welcome to the Environmental Data Analysis Dashboard!
 
-This interactive dashboard is designed to provide comprehensive insights into various aspects of water quality. Utilizing Streamlit, a powerful open-source app framework, we aim to make complex environmental data accessible and understandable for researchers, policymakers, and the public.
+This interactive dashboard is designed to provide comprehensive insights into various aspects of environmental data, focusing on water quality and volcanic activity. Utilizing Streamlit, a powerful open-source app framework, we aim to make complex environmental data accessible and understandable for researchers, policymakers, and the public.
 
-**Why Water Quality Matters:**
+**Why Environmental Monitoring Matters:**
 
-Access to clean and safe water is fundamental for human health, ecosystem integrity, and sustainable development. Monitoring and analyzing water quality parameters are crucial for:
+Access to clean and safe water is fundamental for human health, ecosystem integrity, and sustainable development. Understanding volcanic activity is crucial for hazard assessment and risk mitigation. Monitoring and analyzing these environmental parameters are crucial for:
 
-* **Protecting Public Health:** Identifying contaminants and ensuring drinking water safety.
-
-* **Environmental Conservation:** Assessing the health of aquatic ecosystems and preventing pollution.
-
-* **Resource Management:** Informing decisions related to water treatment, allocation, and conservation efforts.
+* **Protecting Public Health:** Identifying contaminants in water and assessing volcanic hazards.
+* **Environmental Conservation:** Assessing the health of aquatic ecosystems and understanding geological processes.
+* **Resource Management:** Informing decisions related to water treatment, allocation, and disaster preparedness.
 
 **What You Can Explore:**
 
 This dashboard will allow you to:
 
-* Visualize key water quality parameters over time and across different locations.
+* Visualize key environmental parameters over time and across different locations.
+* Identify trends and anomalies in data.
+* Compare data against established standards and guidelines (where applicable).
+* Gain a deeper understanding of the factors influencing environmental health.
 
-* Identify trends and anomalies in water data.
-
-* Compare water quality against established standards and guidelines.
-
-* Gain a deeper understanding of the factors influencing water health.
-
-We hope this tool empowers you with valuable insights into the vital resource that is water.
+We hope this tool empowers you with valuable insights into vital environmental resources and phenomena.
 """)
 
 st.markdown("---") # Separator
 
-# --- Data Loading and Preprocessing ---
+# --- Data Loading and Preprocessing - Water Quality ---
 @st.cache_data
 def load_water_quality_data():
     """Loads and preprocesses the water quality data from the uploaded CSV."""
     try:
-        # Load the CSV file
         df = pd.read_csv('water_quality_filled (1).csv')
-
-        # Combine 'YEAR' and 'MONTH' to create a 'Date' column
         df['Date'] = pd.to_datetime(df['YEAR'].astype(str) + '-' + df['MONTH'].astype(str) + '-01')
-
-        # Rename 'LOCATION' to 'Location' for consistency with previous code
         df.rename(columns={'LOCATION': 'Location'}, inplace=True)
-
-        # Select relevant columns for analysis
-        # Ensure only numeric columns that are parameters are included for plotting
         numeric_cols = ['SURFACE_WATER_TEMP', 'MIDDLE_WATER_TEMP', 'BOTTOM_WATER_TEMP',
                         'PH_LEVEL', 'AMMONIA', 'NITRATE_NITRITE', 'PHOSPHATE', 'DISSOLVED_OXYGEN']
-        
-        # Filter for only relevant columns
         df = df[['Date', 'Location'] + [col for col in numeric_cols if col in df.columns]]
-
         return df
     except FileNotFoundError:
         st.error("Error: 'water_quality_filled (1).csv' not found. Please ensure the file is in the correct directory.")
-        return pd.DataFrame() # Return an empty DataFrame on error
+        return pd.DataFrame()
     except Exception as e:
-        st.error(f"An error occurred during data loading or preprocessing: {e}")
+        st.error(f"An error occurred during water quality data loading or preprocessing: {e}")
         return pd.DataFrame()
 
-df = load_water_quality_data()
+water_df = load_water_quality_data()
 
-# Check if data was loaded successfully
-if df.empty:
-    st.stop() # Stop the app if no data is loaded
-
-# --- Sidebar Filters ---
-st.sidebar.header("Filter Data")
-
-# Get unique locations only if df is not empty
-if not df.empty:
-    selected_location = st.sidebar.multiselect(
-        "Select Location(s):",
-        options=df['Location'].unique(),
-        default=df['Location'].unique()
-    )
-    # Filter by location first
-    filtered_df = df[df['Location'].isin(selected_location)]
-
-    # Date range slider
-    # Ensure min_date and max_date are valid datetime objects
-    if not filtered_df.empty:
-        min_date = filtered_df['Date'].min().to_pydatetime()
-        max_date = filtered_df['Date'].max().to_pydatetime()
-        date_range = st.sidebar.slider(
-            "Select Date Range:",
-            value=(min_date, max_date),
-            format="YYYY-MM-DD"
-        )
-        filtered_df = filtered_df[(filtered_df['Date'] >= pd.to_datetime(date_range[0])) &
-                                  (filtered_df['Date'] <= pd.to_datetime(date_range[1]))]
-    else:
-        st.warning("No data available for the selected locations to determine date range.")
-        filtered_df = pd.DataFrame() # Ensure filtered_df is empty if no locations selected
-else:
-    st.warning("No data loaded. Please check the CSV file.")
-    filtered_df = pd.DataFrame()
-
-
-# --- Main Dashboard Content ---
-st.header("Water Quality Parameter Trends")
-
-# Define parameter options based on the loaded CSV columns
-# Exclude 'Date' and 'Location' from parameter options
-if not df.empty:
-    parameter_options = [col for col in df.columns if col not in ['Date', 'Location']]
-    if not parameter_options:
-        st.warning("No measurable water quality parameters found in the loaded data.")
-        selected_parameter = None
-    else:
-        selected_parameter = st.selectbox("Choose a parameter to analyze:", parameter_options)
-else:
-    parameter_options = []
-    selected_parameter = None
-
-
-# Line chart for the selected parameter over time using Streamlit's native chart
-if selected_parameter and not filtered_df.empty:
-    st.subheader(f'{selected_parameter} Over Time by Location')
-    
+# --- Data Loading and Preprocessing - Volcanic Flux ---
+@st.cache_data
+def load_volcanic_data():
+    """Loads and preprocesses the volcanic flux data from the uploaded CSV."""
     try:
-        # Create a pivot table to get locations as columns for st.line_chart
-        # Fill NaN values that might arise from pivoting to ensure line_chart works smoothly
-        line_chart_data = filtered_df.pivot_table(index='Date', columns='Location', values=selected_parameter, aggfunc='mean').fillna(0)
-        st.line_chart(line_chart_data)
+        df = pd.read_csv('completed_volcanic_flux_filled.csv')
+        df['Date'] = pd.to_datetime(df['YEAR'].astype(str) + '-' + df['MONTH'].astype(str) + '-01')
+        df.rename(columns={'LOCATION': 'Location'}, inplace=True)
+        # Assuming relevant numeric columns for volcanic flux are:
+        volcanic_numeric_cols = ['CO2_FLUX', 'SO2_FLUX', 'H2S_FLUX', 'CH4_FLUX', 'TOTAL_FLUX'] # Add/adjust as per actual CSV columns
+        df = df[['Date', 'Location'] + [col for col in volcanic_numeric_cols if col in df.columns]]
+        return df
+    except FileNotFoundError:
+        st.error("Error: 'completed_volcanic_flux_filled.csv' not found. Please ensure the file is in the correct directory.")
+        return pd.DataFrame()
     except Exception as e:
-        st.warning(f"Could not render line chart. Please adjust filters or check data. Error: {e}")
-        st.dataframe(filtered_df[['Date', 'Location', selected_parameter]]) # Show raw data if chart fails
-elif selected_parameter:
-    st.warning("No data available for the selected filters for plotting trends.")
+        st.error(f"An error occurred during volcanic data loading or preprocessing: {e}")
+        return pd.DataFrame()
+
+volcanic_df = load_volcanic_data()
+
+
+# --- Water Quality Analysis Section ---
+st.header("Water Quality Analysis")
+
+if water_df.empty:
+    st.error("Cannot proceed with Water Quality Analysis as no data was loaded.")
+    water_filtered_df = pd.DataFrame() # Ensure filtered_df is empty
 else:
-    if not df.empty:
-        st.info("Please select a parameter to view trends.")
+    # --- Sidebar Filters for Water Quality ---
+    st.sidebar.header("Filter Water Quality Data")
+    selected_water_location = st.sidebar.multiselect(
+        "Select Water Location(s):",
+        options=water_df['Location'].unique(),
+        default=water_df['Location'].unique(),
+        key='water_location_filter'
+    )
+    water_filtered_df = water_df[water_df['Location'].isin(selected_water_location)]
+
+    if not water_filtered_df.empty:
+        water_min_date = water_filtered_df['Date'].min().to_pydatetime()
+        water_max_date = water_filtered_df['Date'].max().to_pydatetime()
+        water_date_range = st.sidebar.slider(
+            "Select Water Date Range:",
+            value=(water_min_date, water_max_date),
+            format="YYYY-MM-DD",
+            key='water_date_range_filter'
+        )
+        water_filtered_df = water_filtered_df[(water_filtered_df['Date'] >= pd.to_datetime(water_date_range[0])) &
+                                              (water_filtered_df['Date'] <= pd.to_datetime(water_date_range[1]))]
+    else:
+        st.warning("No water quality data available for the selected locations to determine date range.")
+        water_filtered_df = pd.DataFrame()
+
+
+    # --- Water Quality Parameter Trends ---
+    st.subheader("Water Quality Parameter Trends")
+    water_parameter_options = [col for col in water_df.columns if col not in ['Date', 'Location']]
+    if not water_parameter_options:
+        st.warning("No measurable water quality parameters found in the loaded data.")
+        selected_water_parameter = None
+    else:
+        selected_water_parameter = st.selectbox("Choose a water quality parameter to analyze:", water_parameter_options, key='select_water_param')
+
+    if selected_water_parameter and not water_filtered_df.empty:
+        st.write(f'Trend of {selected_water_parameter} Over Time by Location')
+        try:
+            line_chart_data = water_filtered_df.pivot_table(index='Date', columns='Location', values=selected_water_parameter, aggfunc='mean').fillna(0)
+            st.line_chart(line_chart_data)
+        except Exception as e:
+            st.warning(f"Could not render water quality line chart. Please adjust filters or check data. Error: {e}")
+            st.dataframe(water_filtered_df[['Date', 'Location', selected_water_parameter]])
+    elif selected_water_parameter:
+        st.info("No water quality data available for the selected filters for plotting trends.")
+    else:
+        if not water_df.empty:
+            st.info("Please select a water quality parameter to view trends.")
+
+    st.markdown("---")
+
+    st.subheader("Water Quality Summary Statistics")
+    if not water_filtered_df.empty and water_parameter_options:
+        st.dataframe(water_filtered_df.groupby('Location')[water_parameter_options].describe().T.style.set_properties(**{'background-color': '#f0f2f6', 'color': 'black'}), use_container_width=True)
+    else:
+        st.info("Apply filters and select a water quality parameter to see summary statistics.")
+
+    st.markdown("---")
+
+    st.subheader("Water Quality Parameter Distribution (Bar Chart of Averages)")
+    if selected_water_parameter and not water_filtered_df.empty:
+        st.write(f'Average {selected_water_parameter} by Location')
+        avg_data = water_filtered_df.groupby('Location')[selected_water_parameter].mean().reset_index()
+        st.bar_chart(avg_data.set_index('Location'))
+    elif selected_water_parameter:
+        st.info("No water quality data available for the selected filters for plotting distribution.")
+    else:
+        if not water_df.empty:
+            st.info("Please select a water quality parameter to view distribution.")
+
+    st.markdown("---")
+
+    # --- Water Quality Historical Data Section ---
+    st.subheader("Water Quality Historical Data")
+    if not water_filtered_df.empty:
+        st.write("Below is a table displaying the historical water quality data based on your selected filters.")
+        st.dataframe(water_filtered_df, use_container_width=True)
+    else:
+        st.info("No historical water quality data available for the current filters. Please adjust your selections in the sidebar.")
 
 
 st.markdown("---")
+st.markdown("---") # Double separator for visual distinction between sections
 
-st.header("Summary Statistics")
-if not filtered_df.empty and parameter_options:
-    st.dataframe(filtered_df.groupby('Location')[parameter_options].describe().T.style.set_properties(**{'background-color': '#f0f2f6', 'color': 'black'}), use_container_width=True)
+
+# --- Volcanic Activity Analysis Section ---
+st.header("Volcanic Activity Analysis")
+
+if volcanic_df.empty:
+    st.error("Cannot proceed with Volcanic Activity Analysis as no data was loaded.")
 else:
-    st.info("Apply filters and select a parameter to see summary statistics.")
+    # --- Sidebar Filters for Volcanic Activity ---
+    st.sidebar.header("Filter Volcanic Activity Data")
+    selected_volcanic_location = st.sidebar.multiselect(
+        "Select Volcanic Location(s):",
+        options=volcanic_df['Location'].unique(),
+        default=volcanic_df['Location'].unique(),
+        key='volcanic_location_filter'
+    )
+    volcanic_filtered_df = volcanic_df[volcanic_df['Location'].isin(selected_volcanic_location)]
 
-st.markdown("---")
-
-st.header("Parameter Distribution (Bar Chart of Averages)")
-if selected_parameter and not filtered_df.empty:
-    st.subheader(f'Average {selected_parameter} by Location')
-    avg_data = filtered_df.groupby('Location')[selected_parameter].mean().reset_index()
-    st.bar_chart(avg_data.set_index('Location'))
-elif selected_parameter:
-    st.info("No data available for the selected filters for plotting distribution.")
-else:
-    if not df.empty:
-        st.info("Please select a parameter to view distribution.")
-
-st.markdown("---")
-
-# --- Water Quality Historical Data Section ---
-st.header("Water Quality Historical Data")
-if not filtered_df.empty:
-    st.write("Below is a table displaying the historical water quality data based on your selected filters.")
-    st.dataframe(filtered_df, use_container_width=True)
-else:
-    st.info("No historical data available for the current filters. Please adjust your selections in the sidebar.")
+    if not volcanic_filtered_df.empty:
+        volcanic_min_date = volcanic_filtered_df['Date'].min().to_pydatetime()
+        volcanic_max_date = volcanic_filtered_df['Date'].max().to_pydatetime()
+        volcanic_date_range = st.sidebar.slider(
+            "Select Volcanic Date Range:",
+            value=(volcanic_min_date, volcanic_max_date),
+            format="YYYY-MM-DD",
+            key='volcanic_date_range_filter'
+        )
+        volcanic_filtered_df = volcanic_filtered_df[(volcanic_filtered_df['Date'] >= pd.to_datetime(volcanic_date_range[0])) &
+                                                    (volcanic_filtered_df['Date'] <= pd.to_datetime(volcanic_date_range[1]))]
+    else:
+        st.warning("No volcanic activity data available for the selected locations to determine date range.")
+        volcanic_filtered_df = pd.DataFrame()
 
 
-# --- Disclaimer ---
+    # --- Volcanic Activity Parameter Trends ---
+    st.subheader("Volcanic Activity Parameter Trends")
+    volcanic_parameter_options = [col for col in volcanic_df.columns if col not in ['Date', 'Location']]
+    if not volcanic_parameter_options:
+        st.warning("No measurable volcanic parameters found in the loaded data.")
+        selected_volcanic_parameter = None
+    else:
+        selected_volcanic_parameter = st.selectbox("Choose a volcanic parameter to analyze:", volcanic_parameter_options, key='select_volcanic_param')
+
+    if selected_volcanic_parameter and not volcanic_filtered_df.empty:
+        st.write(f'Trend of {selected_volcanic_parameter} Over Time by Location')
+        try:
+            line_chart_data = volcanic_filtered_df.pivot_table(index='Date', columns='Location', values=selected_volcanic_parameter, aggfunc='mean').fillna(0)
+            st.line_chart(line_chart_data)
+        except Exception as e:
+            st.warning(f"Could not render volcanic line chart. Please adjust filters or check data. Error: {e}")
+            st.dataframe(volcanic_filtered_df[['Date', 'Location', selected_volcanic_parameter]])
+    elif selected_volcanic_parameter:
+        st.info("No volcanic activity data available for the selected filters for plotting trends.")
+    else:
+        if not volcanic_df.empty:
+            st.info("Please select a volcanic parameter to view trends.")
+
+    st.markdown("---")
+
+    st.subheader("Volcanic Activity Summary Statistics")
+    if not volcanic_filtered_df.empty and volcanic_parameter_options:
+        st.dataframe(volcanic_filtered_df.groupby('Location')[volcanic_parameter_options].describe().T.style.set_properties(**{'background-color': '#f0f2f6', 'color': 'black'}), use_container_width=True)
+    else:
+        st.info("Apply filters and select a volcanic parameter to see summary statistics.")
+
+    st.markdown("---")
+
+    st.subheader("Volcanic Activity Parameter Distribution (Bar Chart of Averages)")
+    if selected_volcanic_parameter and not volcanic_filtered_df.empty:
+        st.write(f'Average {selected_volcanic_parameter} by Location')
+        avg_data = volcanic_filtered_df.groupby('Location')[selected_volcanic_parameter].mean().reset_index()
+        st.bar_chart(avg_data.set_index('Location'))
+    elif selected_volcanic_parameter:
+        st.info("No volcanic activity data available for the selected filters for plotting distribution.")
+    else:
+        if not volcanic_df.empty:
+            st.info("Please select a volcanic parameter to view distribution.")
+
+    st.markdown("---")
+
+    # --- Volcanic Activity Historical Data Section ---
+    st.subheader("Volcanic Activity Historical Data")
+    if not volcanic_filtered_df.empty:
+        st.write("Below is a table displaying the historical volcanic activity data based on your selected filters.")
+        st.dataframe(volcanic_filtered_df, use_container_width=True)
+    else:
+        st.info("No historical volcanic activity data available for the current filters. Please adjust your selections in the sidebar.")
+
+
+# --- Overall Disclaimer ---
 st.markdown("""
 <br>
-<small><i>Note: This dashboard is now loaded with data from 'water_quality_filled (1).csv'. Ensure the CSV columns match the expected parameters for accurate visualization.</i></small>
+<small><i>Note: This dashboard is now loaded with data from 'water_quality_filled (1).csv' and 'completed_volcanic_flux_filled.csv'. Ensure the CSV columns match the expected parameters for accurate visualization.</i></small>
 """, unsafe_allow_html=True)

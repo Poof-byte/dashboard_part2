@@ -69,29 +69,11 @@ volcanic_df = load_volcanic_data()
 
 # --- Function to display the Introduction Section ---
 def display_introduction():
+    """Displays a short introduction to the dashboard."""
     st.markdown("""
     ## Welcome to the Environmental Data Analysis Dashboard!
 
-    This interactive dashboard is designed to provide comprehensive insights into various aspects of environmental data, focusing on water quality, meteorological conditions, and volcanic activity. Utilizing Streamlit, a powerful open-source app framework, we aim to make complex environmental data accessible and understandable for researchers, policymakers, and the public.
-
-    **Why Environmental Monitoring Matters:**
-
-    Access to clean and safe water is fundamental for human health, ecosystem integrity, and sustainable development. Understanding meteorological conditions is vital for agriculture, disaster preparedness, and climate studies. Assessing volcanic activity is crucial for hazard assessment and risk mitigation. Monitoring and analyzing these environmental parameters are crucial for:
-
-    * **Protecting Public Health:** Identifying contaminants in water and assessing volcanic hazards.
-    * **Environmental Conservation:** Assessing the health of aquatic ecosystems and understanding geological processes.
-    * **Resource Management:** Informing decisions related to water treatment, allocation, and disaster preparedness, as well as agricultural planning and climate impact assessment.
-
-    **What You Can Explore:**
-
-    This dashboard will allow you to:
-
-    * Visualize key environmental parameters over time and across different locations.
-    * Identify trends and anomalies in data.
-    * Compare data against established standards and guidelines (where applicable).
-    * Gain a deeper understanding of the factors influencing environmental health.
-
-    We hope this tool empowers you with valuable insights into vital environmental resources and phenomena.
+    Explore vital environmental data including water quality, meteorological conditions, and volcanic activity. This dashboard provides interactive visualizations and insights to help understand trends and patterns in environmental monitoring.
     """)
 
 # --- Function to display Water Quality Analysis Section ---
@@ -126,7 +108,7 @@ def display_water_quality_analysis(df):
                                               (water_filtered_df['Date'] <= pd.to_datetime(water_date_range[1]))]
     else:
         st.warning("No water quality data available for the selected locations to determine date range.")
-        water_filtered_df = pd.DataFrame() # Ensure filtered_df is empty if no locations selected
+        water_filtered_df = pd.DataFrame()
 
 
     # --- Water Quality Parameter Trends ---
@@ -370,30 +352,49 @@ def display_volcanic_activity_analysis(df):
 
 # --- Main Application Logic ---
 
-# Initialize session state for current page
+# Initialize session state for current page and selected data type
 if 'current_page' not in st.session_state:
     st.session_state['current_page'] = 'Introduction' # Default page
+if 'selected_data_type' not in st.session_state:
+    st.session_state['selected_data_type'] = None # Default no data type selected
 
 # Sidebar for navigation
 st.sidebar.title("Navigation")
+
+# Button for Introduction
 if st.sidebar.button("Introduction"):
     st.session_state['current_page'] = 'Introduction'
-if st.sidebar.button("Water Quality Data"):
-    st.session_state['current_page'] = 'Water Quality'
-if st.sidebar.button("Meteorological Data"):
-    st.session_state['current_page'] = 'Meteorological'
-if st.sidebar.button("Volcanic Activity Data"):
-    st.session_state['current_page'] = 'Volcanic Activity'
+    st.session_state['selected_data_type'] = None # Reset data type when intro is selected
+
+# Button for Data Analysis (which will reveal sub-options)
+if st.sidebar.button("Data Analysis"):
+    st.session_state['current_page'] = 'Data Analysis'
+    # Default to Water Quality if Data Analysis is newly selected and no sub-type yet
+    if st.session_state['selected_data_type'] is None:
+        st.session_state['selected_data_type'] = 'Water Quality'
 
 # Display content based on selected page
 if st.session_state['current_page'] == 'Introduction':
     display_introduction()
-elif st.session_state['current_page'] == 'Water Quality':
-    display_water_quality_analysis(water_df)
-elif st.session_state['current_page'] == 'Meteorological':
-    display_meteorological_analysis(meteorological_df)
-elif st.session_state['current_page'] == 'Volcanic Activity':
-    display_volcanic_activity_analysis(volcanic_df)
+else: # 'Data Analysis' page is selected
+    st.sidebar.markdown("---")
+    st.sidebar.subheader("Select Data Type")
+    
+    # Radio buttons for selecting data type
+    data_type_options = ['Water Quality', 'Meteorological', 'Volcanic Activity']
+    st.session_state['selected_data_type'] = st.sidebar.radio(
+        "Choose a data type:",
+        data_type_options,
+        index=data_type_options.index(st.session_state['selected_data_type']) if st.session_state['selected_data_type'] else 0,
+        key='data_type_radio'
+    )
+
+    if st.session_state['selected_data_type'] == 'Water Quality':
+        display_water_quality_analysis(water_df)
+    elif st.session_state['selected_data_type'] == 'Meteorological':
+        display_meteorological_analysis(meteorological_df)
+    elif st.session_state['selected_data_type'] == 'Volcanic Activity':
+        display_volcanic_activity_analysis(volcanic_df)
 
 # --- Overall Disclaimer ---
 st.markdown("""

@@ -234,6 +234,48 @@ def display_water_quality_analysis(df):
 
     st.markdown("---")
 
+    # --- Pollutant Levels Trend ---
+    st.subheader("Pollutant Levels Trend (Ammonia, pH, Nitrate, Phosphate)")
+    pollutant_options = ['AMMONIA', 'PH_LEVEL', 'NITRATE_NITRITE', 'PHOSPHATE']
+    
+    # Filter pollutant options based on available columns in the DataFrame
+    available_pollutants = [p for p in pollutant_options if p in water_filtered_df.columns]
+
+    if not available_pollutants:
+        st.warning("No relevant pollutant data (Ammonia, pH, Nitrate, Phosphate) found in the filtered data.")
+    else:
+        selected_pollutants = st.multiselect(
+            "Select pollutant(s) to view trend:",
+            options=available_pollutants,
+            default=available_pollutants if available_pollutants else None,
+            key='select_pollutants'
+        )
+
+        if selected_pollutants and not water_filtered_df.empty:
+            st.write(f'Trend of selected pollutant levels over time by Location:')
+            try:
+                # Prepare data for plotting selected pollutants
+                # Melt the DataFrame to have 'variable' (pollutant name) and 'value' columns
+                pollutant_plot_data = water_filtered_df[['Date', 'Location'] + selected_pollutants].melt(
+                    id_vars=['Date', 'Location'], var_name='Pollutant', value_name='Value'
+                )
+                
+                # Pivot table to get pollutants as columns for st.line_chart
+                line_chart_pollutants = pollutant_plot_data.pivot_table(
+                    index='Date', columns=['Location', 'Pollutant'], values='Value', aggfunc='mean'
+                ).fillna(0)
+                st.line_chart(line_chart_pollutants)
+                st.info("This chart displays the trend of selected pollutant levels over time, categorized by location.")
+            except Exception as e:
+                st.warning(f"Could not render pollutant levels chart. Please adjust filters or check data. Error: {e}")
+                st.dataframe(water_filtered_df[['Date', 'Location'] + selected_pollutants])
+        elif selected_pollutants:
+            st.info("No data available for the selected filters for plotting pollutant trends.")
+        else:
+            st.info("Please select at least one pollutant to view trends.")
+
+    st.markdown("---")
+
     # --- Water Quality Summary Statistics ---
     st.subheader("Summary Statistics")
     if not water_filtered_df.empty and water_parameter_options:

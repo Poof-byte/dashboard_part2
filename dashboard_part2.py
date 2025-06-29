@@ -570,7 +570,45 @@ def display_wqi_prediction_tool(water_df_full):
         # --- WQI Prediction ---
         _predict_and_plot_trend(wqi_data_valid, 'WQI', prediction_datetime, latest_date_available, trend_window_months, "Water Quality Index (")
 
-        # --- Individual Pollutant Predictions ---
+
+    else:
+        st.info("Select a future date and click 'Predict' to see estimated WQI. These predictions are based on historical trends found in the water quality data.")
+
+# --- Function to display Pollutant Levels Prediction Tool Section ---
+def display_pollutant_prediction_tool(water_df_full):
+    st.header("Individual Pollutant Level Prediction Tool")
+    st.markdown("Predict the levels of specific water pollutants for a future date based on historical data.")
+
+    if water_df_full.empty:
+        st.warning("No water quality data loaded. Cannot provide pollutant predictions.")
+        return
+
+    # Sort data by date to ensure correct trend calculation
+    water_df_sorted = water_df_full.sort_values(by='Date')
+
+    # Get the latest date from the valid water data
+    latest_date_available = water_df_sorted['Date'].max()
+
+    # Set default date for prediction to one month after the latest available data
+    default_prediction_date = latest_date_available + pd.DateOffset(months=1)
+
+    # Date input for future prediction
+    prediction_date = st.date_input(
+        "Select a future date for prediction:",
+        value=default_prediction_date,
+        min_value=latest_date_available,
+        key='pollutant_prediction_date'
+    )
+
+    # Convert selected date to datetime object
+    prediction_datetime = pd.to_datetime(prediction_date)
+
+    if st.button("Predict Pollutants"):
+        st.subheader("Individual Pollutant Prediction Results")
+
+        # Define trend window for consistency across all predictions
+        trend_window_months = 12 
+        
         pollutants_to_predict = ['PH_LEVEL', 'AMMONIA', 'NITRATE_NITRITE', 'PHOSPHATE']
         
         for pollutant in pollutants_to_predict:
@@ -578,10 +616,8 @@ def display_wqi_prediction_tool(water_df_full):
                 _predict_and_plot_trend(water_df_full, pollutant, prediction_datetime, latest_date_available, trend_window_months)
             else:
                 st.warning(f"Pollutant '{pollutant}' not found in the water quality data. Cannot provide prediction.")
-
-
     else:
-        st.info("Select a future date and click 'Predict' to see estimated WQI and pollutant values. These predictions are based on historical trends found in the water quality data.")
+        st.info("Select a future date and click 'Predict Pollutants' to see estimated values for pH Level, Ammonia, Nitrate, and Phosphate. These predictions are based on historical trends found in the water quality data.")
 
 
 # --- Function to display Meteorological Analysis Section ---
@@ -808,6 +844,12 @@ if st.sidebar.button("Predict WQI"):
     st.session_state['selected_data_type'] = None # Reset data type
     st.session_state['selected_pollutant_display'] = 'Water Quality Parameters' # Reset to default for pollutant section
 
+# NEW: Button for Pollutant Levels Prediction Tool
+if st.sidebar.button("Predict Pollutant Levels"):
+    st.session_state['current_page'] = 'Predict Pollutant Levels'
+    st.session_state['selected_data_type'] = None # Reset data type
+    st.session_state['selected_pollutant_display'] = 'Water Quality Parameters' # Reset to default for pollutant section
+
 
 # Display content based on selected page
 if st.session_state['current_page'] == 'Introduction':
@@ -816,6 +858,8 @@ elif st.session_state['current_page'] == 'Historical Pollutant Levels':
     display_pollutant_levels_analysis(water_df, meteorological_df, volcanic_df)
 elif st.session_state['current_page'] == 'Predict WQI':
     display_wqi_prediction_tool(water_df)
+elif st.session_state['current_page'] == 'Predict Pollutant Levels': # NEW: Call for Pollutant Levels Prediction
+    display_pollutant_prediction_tool(water_df)
 else: # 'Historical Data Analysis' page is selected
     st.sidebar.markdown("---")
     st.sidebar.subheader("Select Data Type")

@@ -292,9 +292,157 @@ def display_water_quality_analysis(df):
 # --- Function to display Historical Pollutant Levels Analysis Section ---
 def display_pollutant_levels_analysis(water_df_full, meteorological_df_full, volcanic_df_full):
     st.header("Historical Pollutant Levels Analysis")
-    st.markdown("This section is currently blank as per user request.")
-    # All content removed to make this section blank.
-    # You can add content here later if needed.
+    st.markdown("Provides detailed trends for key water pollutants and allows overlaying related environmental data.")
+
+    # --- Sidebar Filters for Pollutant Data ---
+    st.sidebar.header("Filter Pollutant Data")
+
+    # Use combined unique locations from all available dataframes for consistent filtering
+    all_locations = pd.Series(dtype='object')
+    if not water_df_full.empty:
+        all_locations = pd.concat([all_locations, pd.Series(water_df_full['Location'].unique())])
+    if not meteorological_df_full.empty:
+        all_locations = pd.concat([all_locations, pd.Series(meteorological_df_full['Location'].unique())])
+    if not volcanic_df_full.empty:
+        all_locations = pd.concat([all_locations, pd.Series(volcanic_df_full['Location'].unique())])
+    
+    all_locations = all_locations.unique().tolist()
+
+    if not all_locations:
+        st.error("No location data found across all datasets. Cannot proceed with pollutant analysis.")
+        return
+
+    selected_pollutant_location = st.sidebar.multiselect(
+        "Select Location(s) for Pollutants Analysis:",
+        options=all_locations,
+        default=all_locations,
+        key='pollutant_analysis_location_filter'
+    )
+
+    # Determine min/max date from water quality data (as it's the primary for pollutants)
+    # Filter water data based on selected locations first
+    current_water_df_for_filter = water_df_full[water_df_full['Location'].isin(selected_pollutant_location)]
+    
+    if current_water_df_for_filter.empty:
+        st.warning("No water quality data available for the selected locations. Please adjust your location filter.")
+        # Cannot determine date range if no data for selected locations
+        return
+
+    pollutant_min_date = current_water_df_for_filter['Date'].min().to_pydatetime()
+    pollutant_max_date = current_water_df_for_filter['Date'].max().to_pydatetime()
+    
+    pollutant_date_range = st.sidebar.slider(
+        "Select Pollutant Date Range:",
+        value=(pollutant_min_date, pollutant_max_date),
+        format="YYYY-MM-DD",
+        key='pollutant_analysis_date_range_filter'
+    )
+    
+    # Filter all dataframes based on selected location and date range
+    pollutant_filtered_df_water = water_df_full[
+        (water_df_full['Location'].isin(selected_pollutant_location)) &
+        (water_df_full['Date'] >= pd.to_datetime(pollutant_date_range[0])) &
+        (water_df_full['Date'] <= pd.to_datetime(pollutant_date_range[1]))
+    ]
+    
+    met_filtered_df = meteorological_df_full[
+        (meteorological_df_full['Location'].isin(selected_pollutant_location)) &
+        (meteorological_df_full['Date'] >= pd.to_datetime(pollutant_date_range[0])) &
+        (meteorological_df_full['Date'] <= pd.to_datetime(pollutant_date_range[1]))
+    ]
+    
+    volc_filtered_df = volcanic_df_full[
+        (volcanic_df_full['Location'].isin(selected_pollutant_location)) &
+        (volcanic_df_full['Date'] >= pd.to_datetime(pollutant_date_range[0])) &
+        (volcanic_df_full['Date'] <= pd.to_datetime(pollutant_date_range[1]))
+    ]
+
+    if pollutant_filtered_df_water.empty:
+        st.warning("No water quality data available for the selected date range and locations for pollutant analysis. Please adjust your filters.")
+        return
+    
+    st.sidebar.markdown("---")
+    st.sidebar.subheader("Display Options")
+    display_option = st.sidebar.radio(
+        "Choose data combination:",
+        ['Water Quality Parameters', 'Water Quality Parameters + Meteorological Parameters', 'Water Quality Parameters + Volcanic Activity Parameters', 'Water Quality Parameters + Meteorological Parameters + Volcanic Activity Parameters'],
+        key='pollutant_display_option'
+    )
+
+    pollutant_options = ['AMMONIA', 'PH_LEVEL', 'NITRATE_NITRITE', 'PHOSPHATE']
+    available_pollutants = [p for p in pollutant_options if p in pollutant_filtered_df_water.columns]
+
+    if not available_pollutants:
+        st.warning("No relevant pollutant data (Ammonia, pH, Nitrate, Phosphate) found in the filtered water quality data.")
+        return
+
+    st.subheader("Individual Pollutant Level Trends (Water Quality)")
+    for pollutant in available_pollutants:
+        st.write(f'Trend of {pollutant} Over Time by Location:')
+        try:
+            line_chart_pollutant = pollutant_filtered_df_water.pivot_table(
+                index='Date', columns='Location', values=pollutant, aggfunc='mean'
+            ).fillna(0)
+            st.line_chart(line_chart_pollutant)
+        except Exception as e:
+            st.warning(f"Could not render chart for {pollutant}. Error: {e}")
+            st.dataframe(pollutant_filtered_df_water[['Date', 'Location', pollutant]])
+    st.info("These charts display the trend of individual pollutant levels from water quality data over time, categorized by location, based on your filters.")
+    
+    st.markdown("---")
+
+    # Display additional data based on display_option
+    if display_option in ['Water Quality Parameters + Meteorological Parameters', 'Water Quality Parameters + Meteorological Parameters + Volcanic Activity Parameters']:
+        st.subheader("Related Meteorological Data Trends")
+        meteorological_plot_params = ['RAINFALL', 'TMAX', 'TMIN', 'RH', 'WIND SPEED', 'WIND DIRECTION']
+        available_met_params = [p for p in meteorological_plot_params if p in met_filtered_df.columns]
+
+        if not met_filtered_df.empty and available_met_params:
+            for param in available_met_params:
+                st.write(f'Trend of {param} Over Time by Location:')
+                try:
+                    line_chart_met_param = met_filtered_df.pivot_table(
+                        index='Date', columns='Location', values=param, aggfunc='mean'
+                    ).fillna(0)
+                    st.line_chart(line_chart_met_param)
+                except Exception as e:
+                    st.warning(f"Could not render chart for {param}. Error: {e}")
+                    st.dataframe(met_filtered_df[['Date', 'Location', param]])
+            st.write("Below is the raw meteorological data for the selected locations and date range:")
+            st.dataframe(met_filtered_df, use_container_width=True)
+        else:
+            st.info("No meteorological data found for the selected locations and date range, or no relevant parameters available.")
+        st.markdown("---")
+
+
+    if display_option in ['Water Quality Parameters + Volcanic Activity Parameters', 'Water Quality Parameters + Meteorological Parameters + Volcanic Activity Parameters']:
+        st.subheader("Related Volcanic Activity Data Trends")
+        volcanic_plot_params = ['CO2 FLUX', 'SO2 FLUX']
+        available_volc_params = [p for p in volcanic_plot_params if p in volc_filtered_df.columns]
+
+        if not volc_filtered_df.empty and available_volc_params:
+            for param in available_volc_params:
+                st.write(f'Trend of {param} Over Time by Location:')
+                try:
+                    line_chart_volc_param = volc_filtered_df.pivot_table(
+                        index='Date', columns='Location', values=param, aggfunc='mean'
+                    ).fillna(0)
+                    st.line_chart(line_chart_volc_param)
+                except Exception as e:
+                    st.warning(f"Could not render chart for {param}. Error: {e}")
+                    st.dataframe(volc_filtered_df[['Date', 'Location', param]])
+            st.write("Below is the raw volcanic activity data for the selected locations and date range:")
+            st.dataframe(volc_filtered_df, use_container_width=True)
+        else:
+            st.info("No volcanic activity data found for the selected locations and date range, or no relevant parameters available.")
+        st.markdown("---")
+
+    st.subheader("Raw Water Quality Pollutant Data Table")
+    if not pollutant_filtered_df_water.empty:
+        st.dataframe(pollutant_filtered_df_water[['Date', 'Location'] + available_pollutants], use_container_width=True)
+    else:
+        st.info("No pollutant data available for the selected filters.")
+
 
 # --- Function to display WQI Prediction Tool Section ---
 def display_wqi_prediction_tool(water_df_full):
@@ -640,7 +788,7 @@ if 'current_page' not in st.session_state:
 if 'selected_data_type' not in st.session_state:
     st.session_state['selected_data_type'] = None # Default no data type selected
 if 'selected_pollutant_display' not in st.session_state:
-    st.session_state['selected_pollutant_display'] = 'Water Quality Only' # Default for pollutant levels display options
+    st.session_state['selected_pollutant_display'] = 'Water Quality Parameters' # Default for pollutant levels display options
 
 # Sidebar for navigation
 st.sidebar.title("Navigation")
@@ -659,11 +807,13 @@ if st.sidebar.button("Historical Data Analysis"):
         st.session_state['selected_data_type'] = 'Water Quality'
     st.session_state['selected_pollutant_display'] = None # Reset pollutant display option
 
-# New button for Historical Pollutant Levels (now blank)
+# New button for Historical Pollutant Levels
 if st.sidebar.button("Historical Pollutant Levels"):
     st.session_state['current_page'] = 'Historical Pollutant Levels'
     st.session_state['selected_data_type'] = None # Reset selected data type to avoid conflicts
-    st.session_state['selected_pollutant_display'] = None # Reset display option to ensure blank page
+    # Default to 'Water Quality Parameters' when this button is pressed
+    if st.session_state['selected_pollutant_display'] is None:
+        st.session_state['selected_pollutant_display'] = 'Water Quality Parameters'
 
 # New button for WQI Prediction Tool
 if st.sidebar.button("Predict WQI"):
@@ -676,7 +826,6 @@ if st.sidebar.button("Predict WQI"):
 if st.session_state['current_page'] == 'Introduction':
     display_introduction()
 elif st.session_state['current_page'] == 'Historical Pollutant Levels':
-    # Pass all dataframes, but the function itself is now blank as per request.
     display_pollutant_levels_analysis(water_df, meteorological_df, volcanic_df)
 elif st.session_state['current_page'] == 'Predict WQI':
     display_wqi_prediction_tool(water_df)

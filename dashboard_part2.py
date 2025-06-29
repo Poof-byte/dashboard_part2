@@ -352,7 +352,7 @@ def display_pollutant_levels_analysis(water_df_full, meteorological_df_full, vol
         st.subheader("Hybrid CNN-LSTM Model Performance for WQI Prediction")
         st.markdown("Metrics (MAE, MSE, R²) for the Hybrid CNN-LSTM model across different input parameter combinations for Water Quality Index prediction:")
 
-        # Data for the WQI performance table and graph
+        # Data for the WQI performance table
         wqi_performance_data = {
             'Parameter Combination': [
                 'Water Quality Parameters',
@@ -369,10 +369,21 @@ def display_pollutant_levels_analysis(water_df_full, meteorological_df_full, vol
         st.dataframe(wqi_performance_df, use_container_width=True)
 
         st.markdown("---")
-        st.subheader("Hybrid CNN-LSTM Model Performance Visualized")
-        # Changed to line_chart
-        st.line_chart(wqi_performance_df.set_index('Parameter Combination'))
-        st.info("This line chart visualizes the MAE, MSE, and R² metrics for the Hybrid CNN-LSTM model, demonstrating its performance with various input parameter combinations for WQI prediction. Lower MAE/MSE and higher R² indicate better model performance.")
+        st.subheader("Hybrid CNN-LSTM Model Performance Visualized (WQI)")
+        
+        # Plot MAE for WQI
+        st.write("MAE for WQI Prediction")
+        st.line_chart(wqi_performance_df.set_index('Parameter Combination')[['MAE']])
+        
+        # Plot MSE for WQI
+        st.write("MSE for WQI Prediction")
+        st.line_chart(wqi_performance_df.set_index('Parameter Combination')[['MSE']])
+
+        # Plot R² for WQI
+        st.write("R² for WQI Prediction")
+        st.line_chart(wqi_performance_df.set_index('Parameter Combination')[['R²']])
+
+        st.info("These line charts visualize the MAE, MSE, and R² metrics for the Hybrid CNN-LSTM model, demonstrating its performance with various input parameter combinations for WQI prediction. Lower MAE/MSE and higher R² indicate better model performance.")
 
     elif display_option == 'Water Quality Parameters':
         st.subheader("Hybrid CNN-LSTM Model Performance: Water Quality Parameters")
@@ -380,9 +391,16 @@ def display_pollutant_levels_analysis(water_df_full, meteorological_df_full, vol
         st.dataframe(wq_params_perf_df, use_container_width=True)
         st.markdown("---")
         st.subheader("Water Quality Parameters Performance Visualized")
-        # Changed to line_chart
-        st.line_chart(wq_params_perf_df.set_index('Parameter'))
-        st.info("This chart shows the performance metrics (MAE, MSE, R²) for individual pollutant predictions when using only water quality parameters as input.")
+        
+        st.write("MAE for Individual Pollutant Predictions (WQ Params)")
+        st.line_chart(wq_params_perf_df.set_index('Parameter')[['MAE']])
+
+        st.write("MSE for Individual Pollutant Predictions (WQ Params)")
+        st.line_chart(wq_params_perf_df.set_index('Parameter')[['MSE']])
+
+        st.write("R² for Individual Pollutant Predictions (WQ Params)")
+        st.line_chart(wq_params_perf_df.set_index('Parameter')[['R²']])
+        st.info("These charts show the performance metrics (MAE, MSE, R²) for individual pollutant predictions when using only water quality parameters as input.")
 
     elif display_option == 'Water Quality Parameters + Meteorological Parameters':
         st.subheader("Hybrid CNN-LSTM Model Performance: Water Quality + Meteorological Parameters")
@@ -390,9 +408,16 @@ def display_pollutant_levels_analysis(water_df_full, meteorological_df_full, vol
         st.dataframe(wq_met_params_perf_df, use_container_width=True)
         st.markdown("---")
         st.subheader("Water Quality + Meteorological Parameters Performance Visualized")
-        # Changed to line_chart
-        st.line_chart(wq_met_params_perf_df.set_index('Parameter'))
-        st.info("This chart shows the performance metrics (MAE, MSE, R²) for individual pollutant predictions when using water quality and meteorological parameters as input.")
+        
+        st.write("MAE for Individual Pollutant Predictions (WQ + Meteo Params)")
+        st.line_chart(wq_met_params_perf_df.set_index('Parameter')[['MAE']])
+
+        st.write("MSE for Individual Pollutant Predictions (WQ + Meteo Params)")
+        st.line_chart(wq_met_params_perf_df.set_index('Parameter')[['MSE']])
+
+        st.write("R² for Individual Pollutant Predictions (WQ + Meteo Params)")
+        st.line_chart(wq_met_params_perf_df.set_index('Parameter')[['R²']])
+        st.info("These charts show the performance metrics (MAE, MSE, R²) for individual pollutant predictions when using water quality and meteorological parameters as input.")
 
     elif display_option == 'Water Quality Parameters + Volcanic Activity Parameters':
         st.subheader("Hybrid CNN-LSTM Model Performance: Water Quality + Volcanic Activity Parameters")
@@ -400,9 +425,16 @@ def display_pollutant_levels_analysis(water_df_full, meteorological_df_full, vol
         st.dataframe(wq_volc_params_perf_df, use_container_width=True)
         st.markdown("---")
         st.subheader("Water Quality + Volcanic Activity Parameters Performance Visualized")
-        # Changed to line_chart
-        st.line_chart(wq_volc_params_perf_df.set_index('Parameter'))
-        st.info("This chart shows the performance metrics (MAE, MSE, R²) for individual pollutant predictions when using water quality and volcanic activity parameters as input.")
+        
+        st.write("MAE for Individual Pollutant Predictions (WQ + Volcanic Params)")
+        st.line_chart(wq_volc_params_perf_df.set_index('Parameter')[['MAE']])
+
+        st.write("MSE for Individual Pollutant Predictions (WQ + Volcanic Params)")
+        st.line_chart(wq_volc_params_perf_df.set_index('Parameter')[['MSE']])
+
+        st.write("R² for Individual Pollutant Predictions (WQ + Volcanic Params)")
+        st.line_chart(wq_volc_params_perf_df.set_index('Parameter')[['R²']])
+        st.info("These charts show the performance metrics (MAE, MSE, R²) for individual pollutant predictions when using water quality and volcanic activity parameters as input.")
 
     elif display_option == 'Water Quality Parameters + Meteorological Parameters + Volcanic Activity Parameters':
         st.subheader("Hybrid CNN-LSTM Model Performance: Water Quality + Meteorological + Volcanic Activity Parameters")
@@ -410,9 +442,16 @@ def display_pollutant_levels_analysis(water_df_full, meteorological_df_full, vol
         st.dataframe(wq_met_volc_params_perf_df, use_container_width=True)
         st.markdown("---")
         st.subheader("Water Quality + Meteorological + Volcanic Activity Parameters Performance Visualized")
-        # Changed to line_chart
-        st.line_chart(wq_met_volc_params_perf_df.set_index('Parameter'))
-        st.info("This chart shows the performance metrics (MAE, MSE, R²) for individual pollutant predictions when using all available environmental parameters as input.")
+        
+        st.write("MAE for Individual Pollutant Predictions (All Params)")
+        st.line_chart(wq_met_volc_params_perf_df.set_index('Parameter')[['MAE']])
+
+        st.write("MSE for Individual Pollutant Predictions (All Params)")
+        st.line_chart(wq_met_volc_params_perf_df.set_index('Parameter')[['MSE']])
+
+        st.write("R² for Individual Pollutant Predictions (All Params)")
+        st.line_chart(wq_met_volc_params_perf_df.set_index('Parameter')[['R²']])
+        st.info("These charts show the performance metrics (MAE, MSE, R²) for individual pollutant predictions when using all available environmental parameters as input.")
 
 
 # --- Helper Function for Prediction and Plotting ---

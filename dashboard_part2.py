@@ -302,13 +302,46 @@ def display_pollutant_levels_analysis(water_df_full, meteorological_df_full, vol
         if st.button('WQ + Volcanic Activity', key='wq_volc_params_btn'):
             st.session_state['selected_pollutant_display'] = 'Water Quality Parameters + Volcanic Activity Parameters'
     with col4:
+        if st.button('Water Quality Index', key='wqi_index_btn'): # New button
+            st.session_state['selected_pollutant_display'] = 'Water Quality Index'
+    
+    # Place 'WQ + Met + Volcanic' on a new row if needed, or adjust columns
+    col5, _, _ = st.sidebar.columns([1,1,1]) # Use 3 columns for better layout if more buttons are added
+    with col5:
         if st.button('WQ + Met + Volcanic', key='wq_met_volc_params_btn'):
             st.session_state['selected_pollutant_display'] = 'Water Quality Parameters + Meteorological Parameters + Volcanic Activity Parameters'
 
     display_option = st.session_state['selected_pollutant_display']
 
-    # --- Display blank content as requested by the user ---
-    st.info(f"Content for '{display_option}' is currently blank as per user request.")
+    # --- Display blank content or WQI metrics based on selection ---
+    if display_option == 'Water Quality Index':
+        st.subheader("Hybrid CNN-LSTM Model Performance for WQI Prediction")
+        st.markdown("Metrics (MAE, MSE, R²) for the Hybrid CNN-LSTM model across different input parameter combinations for Water Quality Index prediction:")
+
+        # Data for the WQI performance table and graph
+        wqi_performance_data = {
+            'Parameter Combination': [
+                'Water Quality Parameters',
+                'Water Quality Parameters + Meteorological Parameters',
+                'Water Quality Parameters + Volcanic Activity Parameters',
+                'Water Quality Parameters + Meteorological Parameters + Volcanic Activity Parameters'
+            ],
+            'MAE': [0.5118, 0.1503, 0.7089, 0.7882],
+            'MSE': [0.4628, 0.0849, 1.0550, 1.2382],
+            'R²': [0.9833, 0.9956, 0.9599, 0.9529]
+        }
+        wqi_performance_df = pd.DataFrame(wqi_performance_data)
+        
+        st.dataframe(wqi_performance_df, use_container_width=True)
+
+        st.markdown("---")
+        st.subheader("Hybrid CNN-LSTM Model Performance Visualized")
+        # Ensure the index is set for the bar chart to use 'Parameter Combination' as x-axis labels
+        st.bar_chart(wqi_performance_df.set_index('Parameter Combination'))
+        st.info("This bar chart visualizes the MAE, MSE, and R² metrics for the Hybrid CNN-LSTM model, demonstrating its performance with various input parameter combinations for WQI prediction. Lower MAE/MSE and higher R² indicate better model performance.")
+
+    else:
+        st.info(f"Content for '{display_option}' is currently blank as per user request.")
 
 
 # --- Helper Function for Prediction and Plotting ---

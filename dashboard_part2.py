@@ -288,28 +288,25 @@ def display_pollutant_levels_analysis(water_df_full, meteorological_df_full, vol
     # --- Removed Sidebar Filters for Pollutant Data ---
     st.sidebar.header("Display Options for Pollutant Data")
 
-    # Use buttons for display options
-    col1, col2 = st.sidebar.columns(2)
-    with col1:
-        if st.button('WQ Params', key='wq_params_btn'):
-            st.session_state['selected_pollutant_display'] = 'Water Quality Parameters'
-    with col2:
-        if st.button('WQ + Meteo Params', key='wq_met_params_btn'):
-            st.session_state['selected_pollutant_display'] = 'Water Quality Parameters + Meteorological Parameters'
-    
-    col3, col4 = st.sidebar.columns(2)
-    with col3:
-        if st.button('WQ + Volcanic Params', key='wq_volc_params_btn'):
-            st.session_state['selected_pollutant_display'] = 'Water Quality Parameters + Volcanic Activity Parameters'
-    with col4:
-        if st.button('WQI Index', key='wqi_index_btn'): # New button
-            st.session_state['selected_pollutant_display'] = 'Water Quality Index'
-    
-    # Place 'WQ + Met + Volcanic' on a new row for better layout
-    col5, _, _ = st.sidebar.columns([1,1,1]) 
-    with col5:
-        if st.button('All Params', key='wq_met_volc_params_btn'): # Shortened label
-            st.session_state['selected_pollutant_display'] = 'Water Quality Parameters + Meteorological Parameters + Volcanic Activity Parameters'
+    # Options for the radio buttons
+    display_options = {
+        'WQ Params': 'Water Quality Parameters',
+        'WQ + Meteo Params': 'Water Quality Parameters + Meteorological Parameters',
+        'WQ + Volcanic Params': 'Water Quality Parameters + Volcanic Activity Parameters',
+        'WQI Index': 'Water Quality Index',
+        'All Params': 'Water Quality Parameters + Meteorological Parameters + Volcanic Activity Parameters'
+    }
+
+    # Radio buttons for display options
+    selected_display_option_key = st.sidebar.radio(
+        "Choose data combination:",
+        list(display_options.keys()),
+        index=list(display_options.keys()).index(st.session_state['selected_pollutant_display']) if st.session_state['selected_pollutant_display'] in display_options.values() else 0,
+        key='pollutant_display_radio'
+    )
+    # Update session state based on radio button selection
+    st.session_state['selected_pollutant_display'] = display_options[selected_display_option_key]
+
 
     display_option = st.session_state['selected_pollutant_display']
 

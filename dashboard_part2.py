@@ -61,12 +61,56 @@ volcanic_df = _load_and_preprocess_data(
 
 # --- Function to display the Introduction Section ---
 def display_introduction():
-    """Displays a short introduction to the dashboard."""
+    """Displays a short introduction to the dashboard and a button for recommendations."""
     st.markdown("""
     ## Welcome to the Environmental Data Analysis Dashboard!
 
     Explore vital environmental data including water quality, meteorological conditions, and volcanic activity. This dashboard provides interactive visualizations and insights to help understand trends and patterns in environmental monitoring. For predictions, this dashboard utilizes concepts from advanced time-series forecasting, including those inspired by **Hybrid CNN-LSTM** architectures for potential future implementations.
     """)
+    # Add a button for Recommendation Insights
+    if st.button("Recommendation Insights based on Threshold of water parameters"):
+        st.session_state['show_recommendations'] = True
+        st.session_state['current_page'] = 'Introduction' # Stay on Introduction page
+    
+    # If the button was clicked, display recommendations
+    if st.session_state.get('show_recommendations', False):
+        display_recommendation_insights()
+
+
+# --- Function to display Recommendation Insights ---
+def display_recommendation_insights():
+    st.subheader("Recommendation Insights based on Water Quality Thresholds")
+    st.markdown("""
+    These recommendations are based on general ecological thresholds for key water quality parameters.
+    Actual recommendations should be derived from specific local regulations, ecosystem needs, and expert consultation.
+    """)
+
+    # Define thresholds and recommendations
+    recommendation_data = {
+        "Parameter": ["pH Level", "Ammonia (mg/L)", "Nitrate (mg/L)", "Phosphate (mg/L)"],
+        "Ideal Range": ["6.5 - 8.5", "< 0.05", "< 1.0", "< 0.1"],
+        "Moderate Concern": ["6.0-6.5 or 8.5-9.0", "0.05 - 0.5", "1.0 - 10.0", "0.1 - 0.5"],
+        "High Concern": ["< 6.0 or > 9.0", "> 0.5", "> 10.0", "> 0.5"],
+        "General Recommendation for High Concern": [
+            "Investigate sources of acidity/alkalinity; consider buffering agents or source reduction.",
+            "Identify sources of ammonia (e.g., agricultural runoff, sewage); implement waste management, aeration.",
+            "Reduce nutrient inputs (e.g., fertilizers, detergents); promote riparian buffers, wastewater treatment upgrades.",
+            "Control runoff from agricultural/urban areas; implement phosphorus removal in wastewater treatment."
+        ]
+    }
+    recommendation_df = pd.DataFrame(recommendation_data)
+
+    st.write("### General Water Quality Parameter Thresholds and Recommendations")
+    st.dataframe(recommendation_df, use_container_width=True)
+
+    st.markdown("""
+    ---
+    **Disclaimer:** These are simplified general guidelines. Comprehensive environmental management requires detailed site-specific analysis, continuous monitoring, and professional ecological and regulatory expertise.
+    """)
+    if st.button("Hide Recommendations"):
+        st.session_state['show_recommendations'] = False
+        st.experimental_rerun() # Rerun to hide the section
+
 
 # --- Function to calculate a simplified Composite Water Quality Index (WQI) for a row ---
 def calculate_composite_wqi(row):
@@ -812,6 +856,9 @@ if 'selected_data_type' not in st.session_state:
     st.session_state['selected_data_type'] = None # Default no data type selected
 if 'selected_pollutant_display' not in st.session_state:
     st.session_state['selected_pollutant_display'] = 'Water Quality Parameters' # Default for pollutant levels display options
+if 'show_recommendations' not in st.session_state: # NEW: State to control recommendation visibility
+    st.session_state['show_recommendations'] = False
+
 
 # Sidebar for navigation
 st.sidebar.title("Navigation")
@@ -821,6 +868,7 @@ if st.sidebar.button("Introduction"):
     st.session_state['current_page'] = 'Introduction'
     st.session_state['selected_data_type'] = None # Reset data type when intro is selected
     st.session_state['selected_pollutant_display'] = 'Water Quality Parameters' # Reset to default for pollutant section
+    st.session_state['show_recommendations'] = False # Hide recommendations when navigating away from them
 
 # Renamed button for Historical Data Analysis
 if st.sidebar.button("Historical Data Analysis"):
@@ -829,6 +877,7 @@ if st.sidebar.button("Historical Data Analysis"):
     if st.session_state['selected_data_type'] is None:
         st.session_state['selected_data_type'] = 'Water Quality'
     st.session_state['selected_pollutant_display'] = 'Water Quality Parameters' # Reset to default for pollutant section
+    st.session_state['show_recommendations'] = False # Hide recommendations when navigating away from them
 
 # New button for Historical Pollutant Levels
 if st.sidebar.button("Historical Pollutant Levels"):
@@ -837,18 +886,23 @@ if st.sidebar.button("Historical Pollutant Levels"):
     # Default to 'Water Quality Parameters' when this button is pressed
     if st.session_state['selected_pollutant_display'] is None:
         st.session_state['selected_pollutant_display'] = 'Water Quality Parameters'
+    st.session_state['show_recommendations'] = False # Hide recommendations when navigating away from them
+
 
 # New button for WQI Prediction Tool
 if st.sidebar.button("Predict WQI"):
     st.session_state['current_page'] = 'Predict WQI'
     st.session_state['selected_data_type'] = None # Reset data type
     st.session_state['selected_pollutant_display'] = 'Water Quality Parameters' # Reset to default for pollutant section
+    st.session_state['show_recommendations'] = False # Hide recommendations when navigating away from them
+
 
 # NEW: Button for Pollutant Levels Prediction Tool
 if st.sidebar.button("Predict Pollutant Levels"):
     st.session_state['current_page'] = 'Predict Pollutant Levels'
     st.session_state['selected_data_type'] = None # Reset data type
     st.session_state['selected_pollutant_display'] = 'Water Quality Parameters' # Reset to default for pollutant section
+    st.session_state['show_recommendations'] = False # Hide recommendations when navigating away from them
 
 
 # Display content based on selected page
@@ -856,10 +910,16 @@ if st.session_state['current_page'] == 'Introduction':
     display_introduction()
 elif st.session_state['current_page'] == 'Historical Pollutant Levels':
     display_pollutant_levels_analysis(water_df, meteorological_df, volcanic_df)
+    # Ensure recommendations are hidden if navigating here from intro after showing them
+    st.session_state['show_recommendations'] = False 
 elif st.session_state['current_page'] == 'Predict WQI':
     display_wqi_prediction_tool(water_df)
+    # Ensure recommendations are hidden if navigating here from intro after showing them
+    st.session_state['show_recommendations'] = False 
 elif st.session_state['current_page'] == 'Predict Pollutant Levels': # NEW: Call for Pollutant Levels Prediction
     display_pollutant_prediction_tool(water_df)
+    # Ensure recommendations are hidden if navigating here from intro after showing them
+    st.session_state['show_recommendations'] = False 
 else: # 'Historical Data Analysis' page is selected
     st.sidebar.markdown("---")
     st.sidebar.subheader("Select Data Type")
@@ -879,6 +939,8 @@ else: # 'Historical Data Analysis' page is selected
         display_meteorological_analysis(meteorological_df)
     elif st.session_state['selected_data_type'] == 'Volcanic Activity':
         display_volcanic_activity_analysis(volcanic_df)
+    # Ensure recommendations are hidden if navigating here from intro after showing them
+    st.session_state['show_recommendations'] = False
 
 # --- Overall Disclaimer ---
 st.markdown("""

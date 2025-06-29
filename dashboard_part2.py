@@ -313,7 +313,41 @@ def display_pollutant_levels_analysis(water_df_full, meteorological_df_full, vol
 
     display_option = st.session_state['selected_pollutant_display']
 
-    # --- Display blank content or WQI metrics based on selection ---
+    # --- Define performance data for Hybrid CNN-LSTM for individual pollutants ---
+    wq_params_perf_data = {
+        'Parameter': ['pH Level', 'Ammonia', 'Nitrate', 'Phosphate'],
+        'MAE': [0.0165, 0.0137, 0.0059, 0.0025],
+        'MSE': [0.0004, 0.0003, 0.0002, 0.0000],
+        'R²': [0.9621, 0.9063, 0.9660, 0.9663]
+    }
+    wq_params_perf_df = pd.DataFrame(wq_params_perf_data)
+
+    wq_met_params_perf_data = {
+        'Parameter': ['pH Level', 'Ammonia', 'Nitrate', 'Phosphate'],
+        'MAE': [0.0135, 0.0091, 0.0056, 0.0026],
+        'MSE': [0.0003, 0.0002, 0.0002, 0.0000],
+        'R²': [0.9674, 0.9438, 0.9751, 0.9282]
+    }
+    wq_met_params_perf_df = pd.DataFrame(wq_met_params_perf_data)
+
+    wq_volc_params_perf_data = {
+        'Parameter': ['pH Level', 'Ammonia', 'Nitrate', 'Phosphate'],
+        'MAE': [0.0123, 0.0140, 0.0040, 0.0039],
+        'MSE': [0.0003, 0.0003, 0.0000, 0.0000],
+        'R²': [0.9632, 0.9176, 0.9657, 0.8716]
+    }
+    wq_volc_params_perf_df = pd.DataFrame(wq_volc_params_perf_data)
+
+    wq_met_volc_params_perf_data = {
+        'Parameter': ['pH Level', 'Ammonia', 'Nitrate', 'Phosphate'],
+        'MAE': [0.0176, 0.0063, 0.0069, 0.0028],
+        'MSE': [0.0006, 0.0001, 0.0005, 0.0000],
+        'R²': [0.9353, 0.9606, 0.9439, 0.9401]
+    }
+    wq_met_volc_params_perf_df = pd.DataFrame(wq_met_volc_params_perf_data)
+
+
+    # --- Display content based on display_option ---
     if display_option == 'Water Quality Index':
         st.subheader("Hybrid CNN-LSTM Model Performance for WQI Prediction")
         st.markdown("Metrics (MAE, MSE, R²) for the Hybrid CNN-LSTM model across different input parameter combinations for Water Quality Index prediction:")
@@ -326,8 +360,8 @@ def display_pollutant_levels_analysis(water_df_full, meteorological_df_full, vol
                 'Water Quality Parameters + Volcanic Activity Parameters',
                 'Water Quality Parameters + Meteorological Parameters + Volcanic Activity Parameters'
             ],
-            'MAE': [0.5118, 0.1503, 0.7089, 0.7882],
-            'MSE': [0.4628, 0.0849, 1.0550, 1.2382],
+            'MAE': [0.5118, 0.1878, 0.7089, 0.7882], # Corrected MAE for Met+WQI (from user data)
+            'MSE': [0.4628, 0.0854, 1.0550, 1.2382], # Corrected MSE for Met+WQI (from user data)
             'R²': [0.9833, 0.9956, 0.9599, 0.9529]
         }
         wqi_performance_df = pd.DataFrame(wqi_performance_data)
@@ -340,8 +374,41 @@ def display_pollutant_levels_analysis(water_df_full, meteorological_df_full, vol
         st.bar_chart(wqi_performance_df.set_index('Parameter Combination'))
         st.info("This bar chart visualizes the MAE, MSE, and R² metrics for the Hybrid CNN-LSTM model, demonstrating its performance with various input parameter combinations for WQI prediction. Lower MAE/MSE and higher R² indicate better model performance.")
 
-    else:
-        st.info(f"Content for '{display_option}' is currently blank as per user request.")
+    elif display_option == 'Water Quality Parameters':
+        st.subheader("Hybrid CNN-LSTM Model Performance: Water Quality Parameters")
+        st.markdown("Metrics (MAE, MSE, R²) for pH Level, Ammonia, Nitrate, and Phosphate predictions using only Water Quality Parameters:")
+        st.dataframe(wq_params_perf_df, use_container_width=True)
+        st.markdown("---")
+        st.subheader("Water Quality Parameters Performance Visualized")
+        st.bar_chart(wq_params_perf_df.set_index('Parameter'))
+        st.info("This chart shows the performance metrics (MAE, MSE, R²) for individual pollutant predictions when using only water quality parameters as input.")
+
+    elif display_option == 'Water Quality Parameters + Meteorological Parameters':
+        st.subheader("Hybrid CNN-LSTM Model Performance: Water Quality + Meteorological Parameters")
+        st.markdown("Metrics (MAE, MSE, R²) for pH Level, Ammonia, Nitrate, and Phosphate predictions using Water Quality and Meteorological Parameters:")
+        st.dataframe(wq_met_params_perf_df, use_container_width=True)
+        st.markdown("---")
+        st.subheader("Water Quality + Meteorological Parameters Performance Visualized")
+        st.bar_chart(wq_met_params_perf_df.set_index('Parameter'))
+        st.info("This chart shows the performance metrics (MAE, MSE, R²) for individual pollutant predictions when using water quality and meteorological parameters as input.")
+
+    elif display_option == 'Water Quality Parameters + Volcanic Activity Parameters':
+        st.subheader("Hybrid CNN-LSTM Model Performance: Water Quality + Volcanic Activity Parameters")
+        st.markdown("Metrics (MAE, MSE, R²) for pH Level, Ammonia, Nitrate, and Phosphate predictions using Water Quality and Volcanic Activity Parameters:")
+        st.dataframe(wq_volc_params_perf_df, use_container_width=True)
+        st.markdown("---")
+        st.subheader("Water Quality + Volcanic Activity Parameters Performance Visualized")
+        st.bar_chart(wq_volc_params_perf_df.set_index('Parameter'))
+        st.info("This chart shows the performance metrics (MAE, MSE, R²) for individual pollutant predictions when using water quality and volcanic activity parameters as input.")
+
+    elif display_option == 'Water Quality Parameters + Meteorological Parameters + Volcanic Activity Parameters':
+        st.subheader("Hybrid CNN-LSTM Model Performance: Water Quality + Meteorological + Volcanic Activity Parameters")
+        st.markdown("Metrics (MAE, MSE, R²) for pH Level, Ammonia, Nitrate, and Phosphate predictions using all available parameters:")
+        st.dataframe(wq_met_volc_params_perf_df, use_container_width=True)
+        st.markdown("---")
+        st.subheader("Water Quality + Meteorological + Volcanic Activity Parameters Performance Visualized")
+        st.bar_chart(wq_met_volc_params_perf_df.set_index('Parameter'))
+        st.info("This chart shows the performance metrics (MAE, MSE, R²) for individual pollutant predictions when using all available environmental parameters as input.")
 
 
 # --- Helper Function for Prediction and Plotting ---

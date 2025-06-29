@@ -291,24 +291,24 @@ def display_pollutant_levels_analysis(water_df_full, meteorological_df_full, vol
     # Use buttons for display options
     col1, col2 = st.sidebar.columns(2)
     with col1:
-        if st.button('Water Quality Parameters', key='wq_params_btn'):
+        if st.button('WQ Params', key='wq_params_btn'):
             st.session_state['selected_pollutant_display'] = 'Water Quality Parameters'
     with col2:
-        if st.button('WQ + Meteorological', key='wq_met_params_btn'):
+        if st.button('WQ + Meteo Params', key='wq_met_params_btn'):
             st.session_state['selected_pollutant_display'] = 'Water Quality Parameters + Meteorological Parameters'
     
     col3, col4 = st.sidebar.columns(2)
     with col3:
-        if st.button('WQ + Volcanic Activity', key='wq_volc_params_btn'):
+        if st.button('WQ + Volcanic Params', key='wq_volc_params_btn'):
             st.session_state['selected_pollutant_display'] = 'Water Quality Parameters + Volcanic Activity Parameters'
     with col4:
-        if st.button('Water Quality Index', key='wqi_index_btn'): # New button
+        if st.button('WQI Index', key='wqi_index_btn'): # New button
             st.session_state['selected_pollutant_display'] = 'Water Quality Index'
     
-    # Place 'WQ + Met + Volcanic' on a new row if needed, or adjust columns
-    col5, _, _ = st.sidebar.columns([1,1,1]) # Use 3 columns for better layout if more buttons are added
+    # Place 'WQ + Met + Volcanic' on a new row for better layout
+    col5, _, _ = st.sidebar.columns([1,1,1]) 
     with col5:
-        if st.button('WQ + Met + Volcanic', key='wq_met_volc_params_btn'):
+        if st.button('All Params', key='wq_met_volc_params_btn'): # Shortened label
             st.session_state['selected_pollutant_display'] = 'Water Quality Parameters + Meteorological Parameters + Volcanic Activity Parameters'
 
     display_option = st.session_state['selected_pollutant_display']

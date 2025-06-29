@@ -363,11 +363,25 @@ def display_pollutant_levels_analysis(water_df_full, meteorological_df_full, vol
     
     st.sidebar.markdown("---")
     st.sidebar.subheader("Display Options")
-    display_option = st.sidebar.radio(
-        "Choose data combination:",
-        ['Water Quality Parameters', 'Water Quality Parameters + Meteorological Parameters', 'Water Quality Parameters + Volcanic Activity Parameters', 'Water Quality Parameters + Meteorological Parameters + Volcanic Activity Parameters'],
-        key='pollutant_display_option'
-    )
+
+    # Use buttons for display options
+    col1, col2 = st.sidebar.columns(2)
+    with col1:
+        if st.button('Water Quality Parameters', key='wq_params_btn'):
+            st.session_state['selected_pollutant_display'] = 'Water Quality Parameters'
+    with col2:
+        if st.button('WQ + Meteorological', key='wq_met_params_btn'):
+            st.session_state['selected_pollutant_display'] = 'Water Quality Parameters + Meteorological Parameters'
+    
+    col3, col4 = st.sidebar.columns(2)
+    with col3:
+        if st.button('WQ + Volcanic Activity', key='wq_volc_params_btn'):
+            st.session_state['selected_pollutant_display'] = 'Water Quality Parameters + Volcanic Activity Parameters'
+    with col4:
+        if st.button('WQ + Met + Volcanic', key='wq_met_volc_params_btn'):
+            st.session_state['selected_pollutant_display'] = 'Water Quality Parameters + Meteorological Parameters + Volcanic Activity Parameters'
+
+    display_option = st.session_state['selected_pollutant_display']
 
     pollutant_options = ['AMMONIA', 'PH_LEVEL', 'NITRATE_NITRITE', 'PHOSPHATE']
     available_pollutants = [p for p in pollutant_options if p in pollutant_filtered_df_water.columns]
@@ -797,7 +811,7 @@ st.sidebar.title("Navigation")
 if st.sidebar.button("Introduction"):
     st.session_state['current_page'] = 'Introduction'
     st.session_state['selected_data_type'] = None # Reset data type when intro is selected
-    st.session_state['selected_pollutant_display'] = None # Reset pollutant display option
+    st.session_state['selected_pollutant_display'] = 'Water Quality Parameters' # Reset to default for pollutant section
 
 # Renamed button for Historical Data Analysis
 if st.sidebar.button("Historical Data Analysis"):
@@ -805,7 +819,7 @@ if st.sidebar.button("Historical Data Analysis"):
     # Default to Water Quality if Historical Data Analysis is newly selected and no sub-type yet
     if st.session_state['selected_data_type'] is None:
         st.session_state['selected_data_type'] = 'Water Quality'
-    st.session_state['selected_pollutant_display'] = None # Reset pollutant display option
+    st.session_state['selected_pollutant_display'] = 'Water Quality Parameters' # Reset to default for pollutant section
 
 # New button for Historical Pollutant Levels
 if st.sidebar.button("Historical Pollutant Levels"):
@@ -819,7 +833,7 @@ if st.sidebar.button("Historical Pollutant Levels"):
 if st.sidebar.button("Predict WQI"):
     st.session_state['current_page'] = 'Predict WQI'
     st.session_state['selected_data_type'] = None # Reset data type
-    st.session_state['selected_pollutant_display'] = None # Reset pollutant display option
+    st.session_state['selected_pollutant_display'] = 'Water Quality Parameters' # Reset to default for pollutant section
 
 
 # Display content based on selected page

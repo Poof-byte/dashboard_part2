@@ -6,66 +6,57 @@ import numpy as np # Import numpy for linear regression
 # Set page configuration
 st.set_page_config(layout="wide", page_title="Environmental Data Analysis Dashboard")
 
-# --- Data Loading and Preprocessing - Water Quality ---
+# --- Generic Data Loading and Preprocessing ---
 @st.cache_data
-def load_water_quality_data():
-    """Loads and preprocesses the water quality data from the uploaded CSV."""
+def _load_and_preprocess_data(file_path, date_cols, rename_cols_map, numeric_cols):
+    """
+    Generic function to load and preprocess data from a CSV.
+    Combines year/month into a 'Date' column, renames specified columns,
+    and selects relevant numeric and date/location columns.
+    """
     try:
-        df = pd.read_csv('water_quality_filled (1).csv')
-        df['Date'] = pd.to_datetime(df['YEAR'].astype(str) + '-' + df['MONTH'].astype(str) + '-01')
-        df.rename(columns={'LOCATION': 'Location'}, inplace=True)
-        numeric_cols = ['SURFACE_WATER_TEMP', 'MIDDLE_WATER_TEMP', 'BOTTOM_WATER_TEMP',
-                        'PH_LEVEL', 'AMMONIA', 'NITRATE_NITRITE', 'PHOSPHATE', 'DISSOLVED_OXYGEN']
-        df = df[['Date', 'Location'] + [col for col in numeric_cols if col in df.columns]]
+        df = pd.read_csv(file_path)
+        # Combine year and month to create a Date column
+        df['Date'] = pd.to_datetime(df[date_cols[0]].astype(str) + '-' + df[date_cols[1]].astype(str) + '-01')
+        
+        # Rename columns if specified
+        if rename_cols_map:
+            df.rename(columns=rename_cols_map, inplace=True)
+            
+        # Select relevant columns, ensuring they exist
+        selected_cols = ['Date', 'Location'] + [col for col in numeric_cols if col in df.columns]
+        df = df[selected_cols]
+        
         return df
     except FileNotFoundError:
-        st.error("Error: 'water_quality_filled (1).csv' not found. Please ensure the file is in the correct directory.")
+        st.error(f"Error: '{file_path}' not found. Please ensure the file is in the correct directory.")
         return pd.DataFrame()
     except Exception as e:
-        st.error(f"An error occurred during water quality data loading or preprocessing: {e}")
+        st.error(f"An error occurred during data loading or preprocessing for '{file_path}': {e}")
         return pd.DataFrame()
 
-water_df = load_water_quality_data()
+# Load data using the generic function
+water_df = _load_and_preprocess_data(
+    'water_quality_filled (1).csv',
+    ['YEAR', 'MONTH'],
+    {'LOCATION': 'Location'},
+    ['SURFACE_WATER_TEMP', 'MIDDLE_WATER_TEMP', 'BOTTOM_WATER_TEMP',
+     'PH_LEVEL', 'AMMONIA', 'NITRATE_NITRITE', 'PHOSPHATE', 'DISSOLVED_OXYGEN']
+)
 
-# --- Data Loading and Preprocessing - Meteorological ---
-@st.cache_data
-def load_meteorological_data():
-    """Loads and preprocesses the meteorological data from the uploaded CSV."""
-    try:
-        df = pd.read_csv('completed_meteorological_filled.csv')
-        df['Date'] = pd.to_datetime(df['YEAR'].astype(str) + '-' + df['MONTH'].astype(str) + '-01')
-        df.rename(columns={'LOCATION': 'Location'}, inplace=True)
-        meteorological_numeric_cols = ['RAINFALL', 'TMAX', 'TMIN', 'RH', 'WIND SPEED', 'WIND DIRECTION']
-        df = df[['Date', 'Location'] + [col for col in meteorological_numeric_cols if col in df.columns]]
-        return df
-    except FileNotFoundError:
-        st.error("Error: 'completed_meteorological_filled.csv' not found. Please ensure the file is in the correct directory.")
-        return pd.DataFrame()
-    except Exception as e:
-        st.error(f"An error occurred during meteorological data loading or preprocessing: {e}")
-        return pd.DataFrame()
+meteorological_df = _load_and_preprocess_data(
+    'completed_meteorological_filled.csv',
+    ['YEAR', 'MONTH'],
+    {'LOCATION': 'Location'},
+    ['RAINFALL', 'TMAX', 'TMIN', 'RH', 'WIND SPEED', 'WIND DIRECTION']
+)
 
-meteorological_df = load_meteorological_data()
-
-# --- Data Loading and Preprocessing - Volcanic Flux ---
-@st.cache_data
-def load_volcanic_data():
-    """Loads and preprocesses the volcanic flux data from the uploaded CSV."""
-    try:
-        df = pd.read_csv('completed_volcanic_flux_filled.csv')
-        df['Date'] = pd.to_datetime(df['YEAR'].astype(str) + '-' + df['MONTH'].astype(str) + '-01')
-        df.rename(columns={'LOCATION': 'Location'}, inplace=True)
-        volcanic_numeric_cols = ['CO2 FLUX', 'SO2 FLUX']
-        df = df[['Date', 'Location'] + [col for col in volcanic_numeric_cols if col in df.columns]]
-        return df
-    except FileNotFoundError:
-        st.error("Error: 'completed_volcanic_flux_filled.csv' not found. Please ensure the file is in the correct directory.")
-        return pd.DataFrame()
-    except Exception as e:
-        st.error(f"An error occurred during volcanic data loading or preprocessing: {e}")
-        return pd.DataFrame()
-
-volcanic_df = load_volcanic_data()
+volcanic_df = _load_and_preprocess_data(
+    'completed_volcanic_flux_filled.csv',
+    ['YEAR', 'MONTH'],
+    {'LOCATION': 'Location'},
+    ['CO2 FLUX', 'SO2 FLUX']
+)
 
 
 # --- Function to display the Introduction Section ---
@@ -254,7 +245,7 @@ def display_water_quality_analysis(df):
         st.info("No water quality data available for the selected filters for plotting distribution.")
     else:
         if not df.empty:
-            st.info("Please select a water quality parameter to view distribution.")
+            st.info("Please select a water quality parameter to view trends.")
 
     st.markdown("---")
 
@@ -458,6 +449,72 @@ def display_pollutant_levels_analysis(water_df_full, meteorological_df_full, vol
         st.info("No pollutant data available for the selected filters.")
 
 
+# --- Helper Function for Prediction and Plotting ---
+def _predict_and_plot_trend(df_for_prediction, param_name, prediction_datetime, latest_date_available, trend_window_months, title_prefix=""):
+    """
+    Predicts a future value for a given parameter based on a linear trend
+    and plots the historical data along with the predicted point.
+    """
+    
+    # Prepare historical data for plotting (average across locations for each date)
+    # Ensure param_name exists in df_for_prediction columns
+    if param_name not in df_for_prediction.columns:
+        st.warning(f"Parameter '{param_name}' not found in the provided data. Cannot provide prediction or plot.")
+        return
+
+    historical_plot_data = df_for_prediction.groupby('Date')[param_name].mean().reset_index()
+    
+    # Filter for trend data based on the trend window
+    start_trend_date = latest_date_available - pd.DateOffset(months=trend_window_months - 1)
+    trend_data = df_for_prediction[df_for_prediction['Date'] >= start_trend_date].copy()
+    trend_data = trend_data.dropna(subset=[param_name]) # Drop NaNs for this specific parameter for trend calculation
+    
+    predicted_value = None
+
+    if len(trend_data) >= 2: # Need at least 2 points to calculate a linear trend
+        trend_data['Date_Ordinal'] = trend_data['Date'].apply(lambda x: x.toordinal())
+        X = trend_data['Date_Ordinal'].values.reshape(-1, 1)
+        y = trend_data[param_name].values
+
+        try:
+            m, c = np.polyfit(X.flatten(), y, 1)
+            future_date_ordinal = prediction_datetime.toordinal()
+            predicted_value = m * future_date_ordinal + c
+
+            # Apply specific clamping based on parameter
+            if param_name == 'PH_LEVEL':
+                predicted_value = max(0.0, min(14.0, predicted_value))
+            elif param_name == 'WQI':
+                predicted_value = max(0, min(100, predicted_value))
+            else: # For other concentrations like Ammonia, Nitrate, Phosphate (should be non-negative)
+                predicted_value = max(0.0, predicted_value)
+
+        except np.linalg.LinAlgError:
+            predicted_value = df_for_prediction[param_name].mean() # Fallback to average if trend fails
+        except Exception as e:
+            predicted_value = df_for_prediction[param_name].mean() # Fallback to average on other errors
+            st.error(f"An error occurred during trend calculation for {param_name}: {e}")
+    else:
+        predicted_value = df_for_prediction[param_name].mean() # Fallback to average if not enough trend data
+
+    if predicted_value is not None:
+        predicted_point_df = pd.DataFrame({
+            'Date': [prediction_datetime],
+            param_name: [predicted_value]
+        })
+        # Use the historical_plot_data which is already averaged by Date
+        combined_plot_data = pd.concat([historical_plot_data, predicted_point_df], ignore_index=True)
+        combined_plot_data = combined_plot_data.sort_values(by='Date')
+
+        st.subheader(f"{title_prefix}{param_name.replace('_', ' ').title()} Trend and Prediction")
+        st.line_chart(combined_plot_data.set_index('Date'))
+        st.info(f"Predicted {param_name.replace('_', ' ').title()} for {prediction_datetime.strftime('%Y-%m-%d')}: **{predicted_value:.2f}**")
+        st.markdown("""
+        <small><i>Note: Prediction is a simplified estimation based on a linear trend from historical data.</i></small>
+        """, unsafe_allow_html=True)
+    st.markdown("---")
+
+
 # --- Function to display WQI Prediction Tool Section ---
 def display_wqi_prediction_tool(water_df_full):
     st.header("Water Quality Index (WQI) Prediction Tool")
@@ -502,107 +559,18 @@ def display_wqi_prediction_tool(water_df_full):
     if st.button("Predict"): # Changed button text to be more general
         st.subheader("Prediction Results")
 
-        # --- WQI Prediction ---
-        # Consider a window of the last X months for trend analysis
+        # Define trend window for consistency across all predictions
         trend_window_months = 12 
-        start_trend_date = latest_date_available - pd.DateOffset(months=trend_window_months - 1)
         
-        # Trend data for WQI
-        wqi_trend_data = wqi_data_valid[wqi_data_valid['Date'] >= start_trend_date].copy()
-        
-        # Prepare historical WQI data for plotting (average across locations for each date)
-        historical_wqi_plot_data = wqi_data_valid.groupby('Date')['WQI'].mean().reset_index()
-        
-        predicted_wqi_value = None
-
-        if len(wqi_trend_data) >= 2: # Need at least 2 points to calculate a linear trend
-            wqi_trend_data['Date_Ordinal'] = wqi_trend_data['Date'].apply(lambda x: x.toordinal())
-            X_wqi = wqi_trend_data['Date_Ordinal'].values.reshape(-1, 1)
-            y_wqi = wqi_trend_data['WQI'].values
-
-            try:
-                m_wqi, c_wqi = np.polyfit(X_wqi.flatten(), y_wqi, 1)
-                future_date_ordinal = prediction_datetime.toordinal()
-                predicted_wqi_value = m_wqi * future_date_ordinal + c_wqi
-                predicted_wqi_value = max(0, min(100, predicted_wqi_value)) # Clamp WQI
-
-            except np.linalg.LinAlgError:
-                predicted_wqi_value = wqi_data_valid['WQI'].mean() # Fallback to average
-            except Exception as e:
-                predicted_wqi_value = wqi_data_valid['WQI'].mean() # Fallback to average
-
-        else:
-            predicted_wqi_value = wqi_data_valid['WQI'].mean() # Fallback to average
-        
-        if predicted_wqi_value is not None:
-            predicted_point_wqi_df = pd.DataFrame({
-                'Date': [prediction_datetime],
-                'WQI': [predicted_wqi_value]
-            })
-            combined_wqi_plot_data = pd.concat([historical_wqi_plot_data, predicted_point_wqi_df], ignore_index=True)
-            combined_wqi_plot_data = combined_wqi_plot_data.sort_values(by='Date')
-
-            st.subheader("Water Quality Index (WQI) Trend and Prediction")
-            st.line_chart(combined_wqi_plot_data.set_index('Date'))
-            st.info(f"Predicted WQI for {prediction_date.strftime('%Y-%m-%d')}: **{predicted_wqi_value:.2f}**")
-            st.markdown("""
-            <small><i>Note: WQI prediction is a simplified estimation based on a linear trend from historical data.</i></small>
-            """, unsafe_allow_html=True)
-        st.markdown("---")
-
+        # --- WQI Prediction ---
+        _predict_and_plot_trend(wqi_data_valid, 'WQI', prediction_datetime, latest_date_available, trend_window_months, "Water Quality Index (")
 
         # --- Individual Pollutant Predictions ---
         pollutants_to_predict = ['PH_LEVEL', 'AMMONIA', 'NITRATE_NITRITE', 'PHOSPHATE']
         
         for pollutant in pollutants_to_predict:
             if pollutant in water_df_full.columns:
-                st.subheader(f"{pollutant.replace('_', ' ').title()} Trend and Prediction")
-                
-                # Prepare historical pollutant data for plotting (average across locations for each date)
-                historical_pollutant_plot_data = water_df_full.groupby('Date')[pollutant].mean().reset_index()
-                
-                # Trend data for individual pollutant
-                pollutant_trend_data = water_df_full[water_df_full['Date'] >= start_trend_date].copy()
-                pollutant_trend_data = pollutant_trend_data.dropna(subset=[pollutant]) # Drop NaNs for this specific pollutant
-                
-                predicted_pollutant_value = None
-
-                if len(pollutant_trend_data) >= 2:
-                    pollutant_trend_data['Date_Ordinal'] = pollutant_trend_data['Date'].apply(lambda x: x.toordinal())
-                    X_pollutant = pollutant_trend_data['Date_Ordinal'].values.reshape(-1, 1)
-                    y_pollutant = pollutant_trend_data[pollutant].values
-
-                    try:
-                        m_pollutant, c_pollutant = np.polyfit(X_pollutant.flatten(), y_pollutant, 1)
-                        predicted_pollutant_value = m_pollutant * future_date_ordinal + c_pollutant
-
-                        # Apply specific clamping if needed for each pollutant (e.g., pH 0-14, Ammonia non-negative)
-                        if pollutant == 'PH_LEVEL':
-                            predicted_pollutant_value = max(0.0, min(14.0, predicted_pollutant_value))
-                        else: # For Ammonia, Nitrate, Phosphate (concentrations, should be non-negative)
-                            predicted_pollutant_value = max(0.0, predicted_pollutant_value)
-
-                    except np.linalg.LinAlgError:
-                        predicted_pollutant_value = water_df_full[pollutant].mean() # Fallback to average
-                    except Exception as e:
-                        predicted_pollutant_value = water_df_full[pollutant].mean() # Fallback to average
-                else:
-                    predicted_pollutant_value = water_df_full[pollutant].mean() # Fallback to average
-
-                if predicted_pollutant_value is not None:
-                    predicted_point_pollutant_df = pd.DataFrame({
-                        'Date': [prediction_datetime],
-                        pollutant: [predicted_pollutant_value]
-                    })
-                    combined_pollutant_plot_data = pd.concat([historical_pollutant_plot_data, predicted_point_pollutant_df], ignore_index=True)
-                    combined_pollutant_plot_data = combined_pollutant_plot_data.sort_values(by='Date')
-
-                    st.line_chart(combined_pollutant_plot_data.set_index('Date'))
-                    st.info(f"Predicted {pollutant.replace('_', ' ').title()} for {prediction_date.strftime('%Y-%m-%d')}: **{predicted_pollutant_value:.2f}**")
-                    st.markdown("""
-                    <small><i>Note: Pollutant prediction is a simplified estimation based on a linear trend from historical data.</i></small>
-                    """, unsafe_allow_html=True)
-                st.markdown("---")
+                _predict_and_plot_trend(water_df_full, pollutant, prediction_datetime, latest_date_available, trend_window_months)
             else:
                 st.warning(f"Pollutant '{pollutant}' not found in the water quality data. Cannot provide prediction.")
 
